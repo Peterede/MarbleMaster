@@ -1,0 +1,7 @@
+com.marblemadness.swing:string/app_name = 0x7f040000
+com.marblemadness.swing:mipmap/ic_launcher_round = 0x7f030001
+com.marblemadness.swing:style/Theme.Swing = 0x7f050000
+com.marblemadness.swing:mipmap/ic_launcher = 0x7f030000
+com.marblemadness.swing:drawable/ic_launcher_foreground = 0x7f020000
+com.marblemadness.swing:color/ic_launcher_bg = 0x7f010001
+com.marblemadness.swing:color/bg = 0x7f010000

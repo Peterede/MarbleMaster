@@ -1,0 +1,61 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:2:1-25:12
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:2:1-25:12
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:2:1-25:12
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:2:1-25:12
+	package
+		INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:2:11-69
+application
+ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:4:5-23:19
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:4:5-23:19
+	android:extractNativeLibs
+		INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+	android:supportsRtl
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:10:9-35
+	android:label
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:5:9-41
+	android:roundIcon
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:7:9-54
+	android:icon
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:6:9-43
+	android:allowBackup
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:9:9-35
+	android:theme
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:8:9-43
+activity#com.marblemadness.swing.MainActivity
+ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:12:9-22:20
+	android:screenOrientation
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:15:13-49
+	android:exported
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:14:13-36
+	android:configChanges
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:16:13-74
+	android:theme
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:17:13-47
+	android:name
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:13:13-41
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:18:13-21:29
+action#android.intent.action.MAIN
+ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:19:17-69
+	android:name
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:19:25-66
+category#android.intent.category.LAUNCHER
+ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:20:17-77
+	android:name
+		ADDED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:20:27-74
+uses-sdk
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml

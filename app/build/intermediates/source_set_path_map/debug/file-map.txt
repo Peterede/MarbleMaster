@@ -1,0 +1,7 @@
+com.marblemadness.swing.app-pngs-0 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/build/generated/res/pngs/debug
+com.marblemadness.swing.app-resValues-1 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/build/generated/res/resValues/debug
+com.marblemadness.swing.app-packageDebugResources-2 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.marblemadness.swing.app-packageDebugResources-3 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.marblemadness.swing.app-merged_res-4 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/build/intermediates/merged_res/debug
+com.marblemadness.swing.app-debug-5 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/debug/res
+com.marblemadness.swing.app-main-6 /mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/res

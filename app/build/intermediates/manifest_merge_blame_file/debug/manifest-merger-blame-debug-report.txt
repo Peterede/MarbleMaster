@@ -1,0 +1,52 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.marblemadness.swing"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="24"
+9        android:targetSdkVersion="34" />
+10
+11    <application
+11-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:4:5-23:19
+12        android:allowBackup="true"
+12-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:9:9-35
+13        android:debuggable="true"
+14        android:extractNativeLibs="false"
+15        android:icon="@mipmap/ic_launcher"
+15-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:6:9-43
+16        android:label="@string/app_name"
+16-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:5:9-41
+17        android:roundIcon="@mipmap/ic_launcher_round"
+17-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:7:9-54
+18        android:supportsRtl="true"
+18-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:10:9-35
+19        android:theme="@style/Theme.Swing" >
+19-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:8:9-43
+20        <activity
+20-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:12:9-22:20
+21            android:name="com.marblemadness.swing.MainActivity"
+21-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:13:13-41
+22            android:configChanges="orientation|screenSize|keyboardHidden"
+22-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:16:13-74
+23            android:exported="true"
+23-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:14:13-36
+24            android:screenOrientation="portrait"
+24-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:15:13-49
+25            android:theme="@style/Theme.Swing" >
+25-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:17:13-47
+26            <intent-filter>
+26-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:18:13-21:29
+27                <action android:name="android.intent.action.MAIN" />
+27-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:19:17-69
+27-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:19:25-66
+28
+29                <category android:name="android.intent.category.LAUNCHER" />
+29-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:20:17-77
+29-->/mnt/059204e2-ac84-4302-86ae-94b0996c91c0/MarbleMadness/app/src/main/AndroidManifest.xml:20:27-74
+30            </intent-filter>
+31        </activity>
+32    </application>
+33
+34</manifest>
