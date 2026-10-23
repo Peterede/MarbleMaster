@@ -90,12 +90,13 @@ Before each upload bump `versionCode` (must increase) and `versionName` in `app/
 
 ## Release artifact
 
-`dist/Swing-1.0-v1.aab` is the signed bundle for `com.edens.marblemaster` (versionCode 1,
-versionName 1.0, targetSdk 36), built with `./gradlew bundleRelease`; `dist/SHA256SUMS` holds its
-checksum. The upload key's SHA-1 is printed by:
+`dist/Swing-1.1-v3.aab` is the signed bundle for `com.edens.marblemaster` (versionCode 3,
+versionName 1.1, targetSdk 36), built with `./gradlew bundleRelease`; `dist/SHA256SUMS` holds its
+checksum. The previous releases, `dist/Swing-1.1-v2.aab` and `dist/Swing-1.0-v1.aab`, are kept
+alongside it. The upload key's SHA-1 is printed by:
 
 ```bash
-keytool -printcert -jarfile dist/Swing-1.0-v1.aab | grep SHA1
+keytool -printcert -jarfile dist/Swing-1.1-v3.aab | grep SHA1
 ```
 
 Upload key: `CN=Swing Upload Key, O=Marble Madness`, SHA-1

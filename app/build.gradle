@@ -20,8 +20,8 @@ android {
         minSdk 24
         // Play requires new apps to target Android 16 (API 36) from 31 Aug 2026.
         targetSdk 36
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.1"
     }
 
     signingConfigs {

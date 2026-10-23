@@ -68,10 +68,10 @@ an existing arcade game in the title.
 Assets are ready, but these are code/console steps that cannot live in this repo:
 
 1. **App bundle.** `./gradlew bundleRelease` produces a signed AAB for `com.edens.marblemaster`
-   (versionCode 1 / versionName 1.0), copied to `dist/` with a SHA-256 file. Signing uses the upload
-   key in `keystore/swing-upload.jks`, configured through `keystore.properties`; both are gitignored
-   and must be backed up. The key's SHA-1 (also printed by
-   `keytool -printcert -jarfile dist/Swing-1.0-v1.aab`) is
+   (versionCode 3 / versionName 1.1), copied to `dist/Swing-1.1-v3.aab` with a SHA-256 file. Signing
+   uses the upload key in `keystore/swing-upload.jks`, configured through `keystore.properties`; both
+   are gitignored and must be backed up. The key's SHA-1 (also printed by
+   `keytool -printcert -jarfile dist/Swing-1.1-v3.aab`) is
    `87:78:33:EA:A5:6F:C7:21:F0:39:44:0E:EB:CA:8E:03:1B:AB:BB:61`.
 2. **Store listing.** Upload the graphics above, paste the four text files, add the phone screenshots.
 3. **Privacy policy.** `docs/privacy-policy.html` is a self-contained page covering exactly what the

@@ -1,8 +1,5 @@
-First release.
+Local high scores and a brand-new timer.
 
-• Balance-scale board with four independent scales that tip, slide and toss marbles
-• Five-second placement timer that drops a marble automatically if you hesitate
-• Blob matching, chain clears and level progression
-• Bomb, Wild and Heavy power-up marbles
-• Procedural chiptune music and sound effects
-• Best score saved locally, with a top-ten high score list
+• Your best runs are now saved on this device: a top-ten list with the score and date of every run, opened with the new HIGH SCORES button.
+• A five-second placement timer now sits above the board — hesitate and the marble drops itself into a random column.
+• The online leaderboard is gone, so Swing no longer needs a Google sign-in, a network connection or any permissions.
