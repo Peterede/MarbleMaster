@@ -38,7 +38,7 @@ private val MARBLE_DARK = intArrayOf(
 class GameView(context: Context) : View(context) {
 
     private val engine = GameEngine()
-    private val audio = GameAudio()
+    private val audio = GameAudio(context)
     private val prefs = context.getSharedPreferences("swing", Context.MODE_PRIVATE)
     private val highScores = HighScoreTable().apply {
         load(prefs.getString(KEY_HIGH_SCORES, null))
