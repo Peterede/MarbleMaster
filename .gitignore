@@ -1,0 +1,23 @@
+# Gradle / Android build output
+.gradle/
+build/
+app/build/
+local.properties
+captures/
+*.apk
+*.aab
+*.apks
+
+# Release signing material: never commit these
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+# Upload artifacts
+dist/
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store

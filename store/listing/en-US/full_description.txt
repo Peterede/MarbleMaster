@@ -1,0 +1,31 @@
+Swing is a physics puzzle game played on a board of balance scales. Every marble you drop has a colour and a weight, and the scales react in real time: load one pan and it sinks, the board tilts, marbles slide — and if one side gets heavy enough, the light pan flips and throws every marble on it into the air.
+
+They come back as power-ups.
+
+**HOW TO PLAY**
+• Tap a column to drop the next marble from the queue of three. You have five seconds to choose — if the bar above the board drains first, the marble drops itself into a random column.
+• Three or more marbles of the same colour in a line clear in a flood-fill blob.
+• Cleared marbles compact the columns, which can set off chain reactions and bigger multipliers.
+• Watch the scales: a heavy marble dropped on the wrong pan can launch a whole stack.
+• Any column that fills to the top ends the run.
+
+**TIP THE SCALES**
+Each of the four scales pivots on its own. Weight differences tip the beam, steep tilts make marbles slide, and a big enough imbalance tosses the light pan. Tossed marbles arc back onto the board as bombs, wilds or heavy iron marbles, so a scale launch is always a pay-off — and the landing can chain straight into the next clear.
+
+**SPECIAL MARBLES**
+• Bomb — detonates where it lands and clears a 3×3 square.
+• Wild — matches any colour.
+• Heavy — always weight 9 and always launches the far pan.
+
+**FEATURES**
+• Real-time balance-scale physics, with sliding stacks and airborne marbles
+• Cascade clears and chain multipliers
+• Levels that add colours and heavier marbles as you progress
+• Best score and a top-ten high score list saved on your device
+• Each high score keeps the date it was set
+• Procedural chiptune soundtrack and sound effects, synthesised on the device
+• Portrait, one-thumb play. Works offline.
+
+No ads. No in-app purchases.
+
+Can you keep the board balanced long enough to set up one more chain?

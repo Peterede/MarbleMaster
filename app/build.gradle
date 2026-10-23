@@ -3,21 +3,42 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+// Upload key for Google Play. keystore.properties is intentionally not committed;
+// without it release builds are produced unsigned (debug builds still work).
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 android {
-    namespace 'com.marblemadness.swing'
-    compileSdk 34
+    namespace 'com.edens.marblemaster'
+    compileSdk 36
 
     defaultConfig {
-        applicationId "com.marblemadness.swing"
+        applicationId "com.edens.marblemaster"
         minSdk 24
-        targetSdk 34
+        // Play requires new apps to target Android 16 (API 36) from 31 Aug 2026.
+        targetSdk 36
         versionCode 1
         versionName "1.0"
+    }
+
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
     }
 
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : null
         }
     }
     compileOptions {
@@ -30,5 +51,5 @@ android {
 }
 
 dependencies {
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.22'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.1.0'
 }

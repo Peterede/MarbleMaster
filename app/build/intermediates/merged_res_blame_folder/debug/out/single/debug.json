@@ -1,14 +1,94 @@
 [
     {
-        "merged": "com.marblemadness.swing.app-merged_res-4:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "com.marblemadness.swing.app-main-6:/mipmap-anydpi-v26/ic_launcher_round.xml"
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-hdpi/ic_launcher_round.png"
     },
     {
-        "merged": "com.marblemadness.swing.app-merged_res-4:/drawable_ic_launcher_foreground.xml.flat",
-        "source": "com.marblemadness.swing.app-main-6:/drawable/ic_launcher_foreground.xml"
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-mdpi/ic_launcher.png"
     },
     {
-        "merged": "com.marblemadness.swing.app-merged_res-4:/mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "com.marblemadness.swing.app-main-6:/mipmap-anydpi-v26/ic_launcher.xml"
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.marblemadness.swing.app-merged_res-8:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "com.marblemadness.swing.app-main-10:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/drawable_ic_launcher_foreground.xml.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/drawable/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-merged_res-8:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "/home/petere/.gradle/daemon/8.5/com.marblemadness.swing.app-main-10:/mipmap-anydpi-v26/ic_launcher_round.xml"
     }
 ]

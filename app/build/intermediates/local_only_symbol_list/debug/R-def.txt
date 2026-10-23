@@ -6,4 +6,6 @@ drawable ic_launcher_foreground
 mipmap ic_launcher
 mipmap ic_launcher_round
 string app_name
+string game_services_project_id
+string leaderboard_id
 style Theme.Swing

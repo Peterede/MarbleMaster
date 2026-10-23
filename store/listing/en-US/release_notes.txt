@@ -1,0 +1,8 @@
+First release.
+
+• Balance-scale board with four independent scales that tip, slide and toss marbles
+• Five-second placement timer that drops a marble automatically if you hesitate
+• Blob matching, chain clears and level progression
+• Bomb, Wild and Heavy power-up marbles
+• Procedural chiptune music and sound effects
+• Best score saved locally, with a top-ten high score list
