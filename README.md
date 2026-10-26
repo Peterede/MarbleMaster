@@ -12,24 +12,26 @@ The board is a 9×12 grid carried by four independent balance scales either side
 - **Center:** column 4 is a solid pillar that never tilts
 - **Right deck:** scale C on columns 5–6, scale D on columns 7–8
 
-Pivots sit between each scale's two pans, so every marble adds weight. Each turn, tap a column to drop the next marble from a preview queue of three. A five-second clock — the bar above the board — limits that choice: if it empties, the marble drops itself into a random column. Marbles have both a color and a weight (1–9), and each scale tips in real time based on the weight difference between its two pans.
+Pivots sit between each scale's two pans, so every marble adds weight. Each turn, tap a column to drop the next marble from a preview queue of three. A shrinking clock — the bar above the board, five seconds at level 1 — limits that choice: if it empties, the marble drops itself into a random column. Marbles have both a color and a weight (1–9), and each scale tips in real time based on the weight difference between its two pans.
 
 **Mechanics:**
 
 - **Scale physics** — imbalance tips the beam; spring physics return it to level when unloaded. Steep tilts make marbles slide toward the low pan, cascading the stack.
+- **Overflow spills** — a column that reaches the top does not end the run by itself: the marble that would rest in the top row rolls into the other pan column while that column has room below the top. But a spill is a rescue, not a free move: it costs 20 points (plus 10 per level, never dropping the score below zero) and uses up that column's single spill reserve. The reserve only comes back once you clear the stack down out of the danger zone, so overstacking the same column twice without clearing it ends the run. Columns within two rows of the top pulse amber while their reserve is still there and red once it is spent.
 - **Scale tosses** — if one pan becomes much heavier, the light pan flips and *every* marble resting on it is thrown into the air for bonus points (35% chance each to spawn a bonus star). Those marbles arc back down onto the board as special marbles, so a toss always pays off in powerups.
 - **Special marbles** — roughly one marble in seven arrives as a powerup:
   - 🧨 **Bomb** — detonates where it lands, clearing a 3×3 square for weight-scaled points.
   - 🌈 **Wild** — colorless; stands in for any color in horizontal runs and in the flood-fill.
   - ⚙️ **Heavy** — iron, always weight 9, and always fires the far pan of its scale for a double launch bonus when dropped.
 - **Blob matching** — a horizontal run of 3+ same-color marbles seeds a match that flood-fills in all 8 directions (including diagonals), clearing organic-shaped groups.
-- **Chain reactions** — clears compact the columns and can trigger follow-up matches with increasing multipliers.
+- **Streaks** — clears that follow each other within six seconds build a streak: every consecutive clear adds 25% to the points, up to +100%, and a drop that clears nothing ends it. The running streak and its remaining window show in the HUD.
 - **Progression** — every 12 cleared marbles raise the level, adding more colors (up to 6) and heavier marbles (up to 9).
-- **Placement timer** — you have five seconds to choose a column; hesitate and the marble drops itself in a random one.
-- **Sound & music** — a procedural chiptune loop plus effect sounds for drops, matches, blasts, tosses, landings, level-ups, and game over. Everything is synthesized at runtime, so the APK ships no audio files.
-- **Local high scores** — the in-game **HIGH SCORES** button opens a top-ten list of your best runs, kept on the device. Nothing is uploaded and the game needs no network or account.
+- **Placement timer** — you start with five seconds to choose a column, and each level shortens the clock by 0.35s down to a 1.8s floor; hesitate and the marble drops itself in a random one.
+- **Sound & music** — a procedural chiptune loop plus effect sounds for drops, matches, blasts, tosses, landings, level-ups, and game over. Everything is synthesized at runtime, so the APK ships no audio files. Music, effects and vibration can each be switched off in **SETTINGS**.
+- **Local high scores** — the in-game **SCORES** button opens a top-ten list of your best runs, kept on the device. Nothing is uploaded and the game needs no network or account.
+- **Stats & achievements** — the **STATS** panel shows lifetime totals (best level, best score, biggest clear, marbles cleared and tossed, spills survived, runs played) and six achievements unlocked by play: First Swing, Blast Off, Blob Buster, High Climber, Century and Point Hoarder. All of it stays on the device.
 
-Game over when any column fills to the top. Your ten best runs are persisted across sessions.
+Game over when a marble has to rest in the top row and its column has no spill left to give — the pan's other column is full, or the column already spent its reserve without clearing. Your ten best runs are persisted across sessions.
 
 ## Tech Stack
 
@@ -54,6 +56,7 @@ app/src/main/java/com/edens/marblemaster/
     ├── AudioSynth.kt    # Procedural PCM synthesis for effects and the music loop
     ├── GameAudio.kt     # AudioTrack playback, looping music, effect throttling
     ├── HighScores.kt    # Local top-ten high score table
+    ├── PlayerProgress.kt # Persisted lifetime stats and achievements
     └── GameView.kt      # Rendering, input, animations, particles, HUD
 ```
 
@@ -61,11 +64,13 @@ Game logic (`GameEngine`) is fully decoupled from rendering (`GameView`) and com
 
 ## High scores
 
-A finished run is ranked into a local top-ten list, the **HIGH SCORES** button at the
+A finished run is ranked into a local top-ten list, the **SCORES** button at the
 bottom of the screen shows it, and the game-over panel reports the rank of the run you
 just finished. Ties keep the older run ahead. The table stores the score and the date of
 each run; it lives in the app's private `SharedPreferences` (`swing` → `high_scores`) and
-is never uploaded. The app declares no permissions and makes no network calls.
+is never uploaded. Lifetime stats and unlocked achievements sit beside it under `progress`,
+and the three settings toggles are stored as `music`, `effects` and `haptics`. The app
+declares no permissions and makes no network calls.
 
 A single best score saved by an earlier version is migrated into the list on first launch.
 Clearing the app's storage resets the table.

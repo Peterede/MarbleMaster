@@ -17,7 +17,10 @@ import kotlin.math.sign
  *    board as special marbles. Steep tilts make marbles slide.
  *  - Special marbles (see [PowerKind]) occasionally arrive in the queue: bombs detonate on
  *    landing, wild marbles match any colour, heavy marbles always force a launch.
- *  - Game over when marbles reach the top row.
+ *  - A marble that would rest in the top row spills into the pan's other column while that
+ *    column has room below the top row. A spill costs points and uses up the column's single
+ *    spill reserve, which only refills once the stack clears back out of the danger zone.
+ *    Game over when a topped-out column has no spill left to spend.
  */
 class GameEngine(val rng: java.util.Random = java.util.Random()) {
 
@@ -45,8 +48,16 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
     var lastChain = 0
         private set
 
+    /** Consecutive scoring clears; a drop that clears nothing or the time window ends it. */
+    var streak = 0
+        private set
+
+    /** Seconds left on the current streak before it lapses. */
+    var streakTimeLeft = 0f
+        private set
+
     /** Seconds left to choose a column; at 0 the marble drops itself into a random one. */
-    var timeLeft = Config.DROP_TIMER_SECONDS
+    var timeLeft = Config.dropTimerSeconds(1)
         private set
 
     /** Number of powerups fired this run. */
@@ -56,7 +67,15 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
     /** Marbles currently flying off a scale pan; they land again as special marbles. */
     val airborne = ArrayList<AirborneMarble>()
 
+    /** Marbles rescued by a spill this run. */
+    var spills = 0
+        private set
+
+    /** Columns that have already spent their one spill; see [Config.SPILL_RECHARGE_ROOM]. */
+    private val spillSpent = BooleanArray(Config.COLS)
+
     private var nextId = 1
+    private var clearAwards = 0
     private val slideCooldown = FloatArray(Config.COLS)
     private val pendingEvents = ArrayList<GameEvent>()
     private val rngBonus = java.util.Random()
@@ -77,8 +96,13 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         marblesCleared = 0
         gameOver = false
         lastChain = 0
-        timeLeft = Config.DROP_TIMER_SECONDS
+        streak = 0
+        streakTimeLeft = 0f
+        clearAwards = 0
+        timeLeft = Config.dropTimerSeconds(level)
         powerupsUsed = 0
+        spills = 0
+        spillSpent.fill(false)
         airborne.clear()
         pendingEvents.clear()
     }
@@ -101,7 +125,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         if (!spawn(col, q.color, q.weight, q.power)) return false
         queue.removeAt(0)
         queue.add(randomQueued())
-        timeLeft = Config.DROP_TIMER_SECONDS
+        timeLeft = Config.dropTimerSeconds(level)
         return true
     }
 
@@ -134,6 +158,12 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             if (timeLeft == 0f) drop(rng.nextInt(Config.COLS))
         }
 
+        // a streak only survives while the next clear arrives inside the window
+        if (streakTimeLeft > 0f) {
+            streakTimeLeft = max(0f, streakTimeLeft - d)
+            if (streakTimeLeft == 0f) streak = 0
+        }
+
         active?.let { m ->
             activeVy = min(activeVy + Config.DROP_GRAVITY * d, Config.DROP_MAX_SPEED)
             activeRowF += activeVy * d
@@ -151,6 +181,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         processSlides()
         if (active == null) resolveMatches()
         updateLevel()
+        rechargeSpills()
         checkGameOver()
     }
 
@@ -162,14 +193,16 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         m.visualCol = m.col.toFloat()
         grid[row][m.col] = m
 
+        val awardsBefore = clearAwards
         if (m.power == PowerKind.BOMB) {
             detonate(m)
             resolveMatches()
-            return
+        } else {
+            triggerLaunch(m)
+            resolveMatches()
         }
-
-        triggerLaunch(m)
-        resolveMatches()
+        // placing a marble that matches nothing ends the run of consecutive clears
+        if (clearAwards == awardsBefore) breakStreak()
     }
 
     private fun restRow(col: Int): Int {
@@ -335,11 +368,11 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             }
         }
         if (cleared.isEmpty()) return
-        score += points
+        points = awardClear(points)
         marblesCleared += cleared.size
         powerupsUsed++
         for (c in 0 until Config.COLS) compactColumn(c)
-        pendingEvents.add(GameEvent.Blast(PowerKind.BOMB, bomb.row, bomb.col, cleared, points))
+        pendingEvents.add(GameEvent.Blast(PowerKind.BOMB, bomb.row, bomb.col, cleared, points, streak))
     }
 
     // ------------------------------------------------------------------ sliding
@@ -406,13 +439,33 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             }
             var points = Config.MATCH_POINTS * group.size * chain
             if (group.size >= Config.MATCH_MIN + 1) points += Config.LARGE_GROUP_BONUS * (group.size - Config.MATCH_MIN)
-            score += points
+            points = awardClear(points)
             marblesCleared += group.size
 
             for ((r, c) in group) grid[r][c] = null
             for (c in 0 until Config.COLS) compactColumn(c)
-            pendingEvents.add(GameEvent.Match(matchCells, colors, points, chain))
+            pendingEvents.add(GameEvent.Match(matchCells, colors, points, chain, streak))
         }
+    }
+
+    /**
+     * Registers one scoring clear, extends the streak and pays its bonus. Returns the total
+     * points for the clear, including the streak share.
+     */
+    private fun awardClear(points: Int): Int {
+        if (streakTimeLeft <= 0f) streak = 0
+        streak++
+        streakTimeLeft = Config.STREAK_WINDOW
+        clearAwards++
+        val steps = min(streak - 1, Config.STREAK_MAX_BONUS_STEPS)
+        val total = points + (points * Config.STREAK_BONUS_PER_STEP * steps).toInt()
+        score += total
+        return total
+    }
+
+    private fun breakStreak() {
+        streak = 0
+        streakTimeLeft = 0f
     }
 
     /**
@@ -503,19 +556,69 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         val newLevel = 1 + marblesCleared / Config.MARBLES_PER_LEVEL
         if (newLevel > level) {
             level = newLevel
+            // the clock shortens with the level, so trim any time already on it
+            timeLeft = min(timeLeft, Config.dropTimerSeconds(level))
             pendingEvents.add(GameEvent.LevelUp(level))
         }
     }
 
+    /**
+     * Overloaded columns spill instead of ending the run: a marble resting in the top row rolls
+     * into the pan's other column while that column still has room below the top row. The rescue
+     * is not free — it costs points and spends the column's reserve until the stack clears.
+     */
     private fun checkGameOver() {
         if (gameOver || active != null) return
+        var spilled = false
         for (c in 0 until Config.COLS) {
-            if (grid[0][c] != null) {
+            if (grid[0][c] == null) continue
+            val target = if (spillSpent[c]) -1 else spillTarget(c)
+            if (target < 0) {
                 gameOver = true
                 pendingEvents.add(GameEvent.GameOver)
                 return
             }
+            val m = grid[0][c]!!
+            val row = restRow(target)
+            grid[0][c] = null
+            m.col = target
+            m.row = row
+            grid[row][target] = m
+            spillSpent[c] = true
+            val penalty = min(Config.spillPenalty(level), score)
+            score -= penalty
+            spills++
+            pendingEvents.add(GameEvent.Spill(c, target, row, m.color, m.weight, m.power, penalty))
+            spilled = true
         }
+        if (spilled) resolveMatches()
+    }
+
+    /** A column earns its spill back once its stack has dropped clear of the danger zone. */
+    private fun rechargeSpills() {
+        for (c in 0 until Config.COLS) {
+            if (spillSpent[c] && restRow(c) >= Config.SPILL_RECHARGE_ROOM) spillSpent[c] = false
+        }
+    }
+
+    /** True when a marble topping out [col] right now would spill instead of ending the run. */
+    fun canSpill(col: Int): Boolean =
+        col in 0 until Config.COLS && !spillSpent[col] && spillTarget(col) >= 0
+
+    /**
+     * The column that can take a spilled marble: the other column of the same scale, or either
+     * side of the centre pillar. A target needs room below the top row so a spill can never just
+     * pass the same problem back across the beam.
+     */
+    private fun spillTarget(col: Int): Int {
+        val candidates = if (col == Config.PILLAR_COL) {
+            listOf(col - 1, col + 1)
+        } else {
+            seesawFor(col)?.columns?.filter { it != col } ?: emptyList()
+        }
+        return candidates
+            .filter { it in 0 until Config.COLS && restRow(it) >= 1 }
+            .maxByOrNull { restRow(it) } ?: -1
     }
 
     fun colorCount(): Int = min(Config.BASE_COLORS + (level - 1) / 2, Config.MAX_COLORS)

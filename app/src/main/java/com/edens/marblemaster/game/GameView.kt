@@ -50,6 +50,18 @@ class GameView(context: Context) : View(context) {
     }
     private val best: Int get() = highScores.best()
 
+    private val progress = PlayerProgress().apply { load(prefs.getString(KEY_PROGRESS, null)) }
+
+    private var musicEnabled = prefs.getBoolean(KEY_MUSIC, true)
+    private var effectsEnabled = prefs.getBoolean(KEY_EFFECTS, true)
+    private var hapticsEnabled = prefs.getBoolean(KEY_HAPTICS, true)
+
+    init {
+        audio.setEffectsEnabled(effectsEnabled)
+        // leaving the music enabled here would start the loop before the activity is visible
+        if (!musicEnabled) audio.setMusicEnabled(false)
+    }
+
     private val density = resources.displayMetrics.density
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
@@ -62,11 +74,11 @@ class GameView(context: Context) : View(context) {
     private var lastFrame = 0L
     private var running = false
     private var pressCol = -1
-    private var pressScores = false
+    private var pressButton = -1
     private var pressStartX = 0f
     private var pressStartY = 0f
-    private val scoresRect = RectF()
-    private var showHighScores = false
+    private val buttonRects = Array(Button.values().size) { RectF() }
+    private var modal = Modal.NONE
     private var scoreRecorded = false
     private var lastRank = 0
 
@@ -74,6 +86,7 @@ class GameView(context: Context) : View(context) {
     private val particles = ArrayList<Particle>()
     private val popups = ArrayList<Popup>()
     private var gameOverFlash = 0f
+    private var pulse = 0f
 
     private val rnd = Random.Default
 
@@ -99,6 +112,7 @@ class GameView(context: Context) : View(context) {
         color = 0xFF252E42.toInt(); strokeWidth = 1.5f * density; style = Paint.Style.STROKE
     }
     private val highlightPaint = Paint().apply { color = 0x224FC3F7 }
+    private val dangerPaint = Paint().apply { color = 0xFFFF7043.toInt() }
     private val beamPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF8D6E63.toInt() }
     private val beamEdgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFF5D4037.toInt(); style = Paint.Style.STROKE; strokeWidth = 3f * density
@@ -176,6 +190,7 @@ class GameView(context: Context) : View(context) {
         running = false
         removeCallbacks(frameCallback)
         audio.pause()
+        saveProgress()
     }
 
     private val frameCallback: Runnable = object : Runnable {
@@ -216,13 +231,16 @@ class GameView(context: Context) : View(context) {
         gridX = (wF - cell * Config.COLS) / 2f
         gridY = hudH + 4f * density
         beamY = gridY + Config.ROWS * cell + cell * 0.45f
-        val buttonWidth = min(wF * 0.55f, 210f * density)
-        val buttonHeight = 40f * density
-        val buttonBottom = hF - 12f * density
-        scoresRect.set(
-            wF / 2f - buttonWidth / 2f, buttonBottom - buttonHeight,
-            wF / 2f + buttonWidth / 2f, buttonBottom
-        )
+        val buttonGap = 6f * density
+        val rowWidth = min(wF * 0.94f, 360f * density)
+        val buttonWidth = (rowWidth - buttonGap * (buttonRects.size - 1)) / buttonRects.size
+        val buttonHeight = 38f * density
+        val buttonBottom = hF - 10f * density
+        val rowLeft = (wF - rowWidth) / 2f
+        for ((i, rect) in buttonRects.withIndex()) {
+            val left = rowLeft + i * (buttonWidth + buttonGap)
+            rect.set(left, buttonBottom - buttonHeight, left + buttonWidth, buttonBottom)
+        }
         textPaint.textSize = 22f * density
         textDimPaint.textSize = 13f * density
         centerTextPaint.textSize = 22f * density
@@ -232,26 +250,28 @@ class GameView(context: Context) : View(context) {
     // ------------------------------------------------------------------ input
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        if (showHighScores) {
-            // the list is modal: any tap dismisses it
-            if (event.actionMasked == MotionEvent.ACTION_UP) showHighScores = false
+        if (modal != Modal.NONE) {
+            if (event.actionMasked == MotionEvent.ACTION_UP) {
+                val setting = if (modal == Modal.SETTINGS) settingAt(event.x, event.y) else null
+                if (setting != null) toggleSetting(setting) else modal = Modal.NONE
+            }
             return true
         }
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 pressStartX = event.x
                 pressStartY = event.y
-                pressScores = !engine.gameOver && scoresRect.contains(event.x, event.y)
-                pressCol = if (pressScores) -1 else colAt(event.x)
+                pressButton = buttonAt(event.x, event.y)
+                pressCol = if (pressButton >= 0) -1 else colAt(event.x)
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
-                if (pressCol >= 0 || pressScores) {
+                if (pressCol >= 0 || pressButton >= 0) {
                     val dx = event.x - pressStartX
                     val dy = event.y - pressStartY
                     val slop = touchSlop.toFloat()
                     if (dx * dx + dy * dy > slop * slop) {
-                        pressScores = false
+                        pressButton = -1
                         pressCol = colAt(event.x)
                     }
                 }
@@ -260,23 +280,39 @@ class GameView(context: Context) : View(context) {
             MotionEvent.ACTION_UP -> {
                 if (engine.gameOver) {
                     restartGame()
-                } else if (pressScores && scoresRect.contains(event.x, event.y)) {
-                    showHighScores = true
-                } else if (!pressScores) {
+                } else if (pressButton >= 0 && buttonAt(event.x, event.y) == pressButton) {
+                    modal = when (Button.values()[pressButton]) {
+                        Button.SCORES -> Modal.SCORES
+                        Button.STATS -> Modal.STATS
+                        Button.SETTINGS -> Modal.SETTINGS
+                    }
+                } else if (pressButton < 0) {
                     val col = colAt(event.x)
                     if (col >= 0 && engine.drop(col)) audio.play(SoundEffect.DROP)
                 }
                 pressCol = -1
-                pressScores = false
+                pressButton = -1
                 return true
             }
             MotionEvent.ACTION_CANCEL -> {
                 pressCol = -1
-                pressScores = false
+                pressButton = -1
                 return true
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    private fun buttonAt(x: Float, y: Float): Int {
+        if (engine.gameOver) return -1
+        for ((i, rect) in buttonRects.withIndex()) if (rect.contains(x, y)) return i
+        return -1
+    }
+
+    private fun settingAt(x: Float, y: Float): Setting? {
+        val (_, rows) = settingsLayout()
+        for ((rect, setting) in rows) if (rect.contains(x, y)) return setting
+        return null
     }
 
     private fun colAt(x: Float): Int {
@@ -306,12 +342,36 @@ class GameView(context: Context) : View(context) {
             .apply()
     }
 
+    private fun saveProgress() {
+        prefs.edit().putString(KEY_PROGRESS, progress.serialize()).apply()
+    }
+
+    /** Celebrates achievements that just became true and keeps the new totals on disk. */
+    private fun unlock(fresh: List<Achievement>) {
+        if (fresh.isEmpty()) return
+        fresh.forEachIndexed { i, achievement ->
+            addPopup(
+                width / 2f,
+                height * 0.30f + i * 26f * density,
+                "ACHIEVEMENT · ${achievement.title}",
+                0xFFFFD54F.toInt(),
+                1.8f
+            )
+        }
+        audio.play(SoundEffect.LEVEL_UP)
+        haptic()
+        saveProgress()
+    }
+
     // ------------------------------------------------------------------ update
 
     private fun step(dt: Float) {
-        if (showHighScores) return // the list is modal; freeze the run behind it
+        if (modal != Modal.NONE) return // panels are modal; freeze the run behind them
+        pulse = (pulse + dt * 4f) % 6.2831855f
         engine.update(dt)
         for (ev in engine.drainEvents()) handleEvent(ev)
+        progress.recordScore(engine.score)
+        unlock(progress.check())
 
         val itS = stars.iterator()
         while (itS.hasNext()) {
@@ -355,22 +415,31 @@ class GameView(context: Context) : View(context) {
         when (ev) {
             is GameEvent.Match -> {
                 for (mc in ev.cells) spawnClearParticles(mc)
+                progress.recordClear(ev.cells.size)
+                unlock(progress.check())
                 ev.cells.firstOrNull()?.let { mc ->
                     val (px, py) = cellCenter(mc.row.toFloat(), mc.col.toFloat())
                     val label = if (ev.chain > 1) "+${ev.points} x${ev.chain}" else "+${ev.points}"
                     addPopup(px, py, label, marbleColorOf(mc.color, mc.power))
+                    if (ev.streak >= 2) {
+                        addPopup(px, py - cell * 0.6f, "STREAK x${ev.streak}", 0xFFFFD54F.toInt(), 0.8f)
+                    }
                 }
                 audio.play(if (ev.chain > 1) SoundEffect.MATCH_CHAIN else SoundEffect.MATCH)
                 haptic()
             }
             is GameEvent.Blast -> {
                 for (mc in ev.cells) spawnClearParticles(mc)
+                progress.recordClear(ev.cells.size)
+                unlock(progress.check())
                 val (px, py) = cellCenter(ev.row.toFloat(), ev.col.toFloat())
                 addPopup(px, py - cell * 0.6f, "BOOM +${ev.points}", 0xFFFF7043.toInt(), 1.1f)
                 audio.play(SoundEffect.BLAST)
                 haptic()
             }
             is GameEvent.Launched -> {
+                progress.recordToss()
+                unlock(progress.check())
                 val (px, py) = cellCenter(ev.row.toFloat(), ev.col.toFloat())
                 addPopup(px, py - cell, "BONUS +${ev.bonus}", 0xFFFFD54F.toInt())
                 if (ev.spawnStar) {
@@ -393,12 +462,26 @@ class GameView(context: Context) : View(context) {
                 audio.play(SoundEffect.LAND)
             }
             is GameEvent.LevelUp -> {
+                progress.recordLevel(ev.level)
+                unlock(progress.check())
                 addPopup(width / 2f, height * 0.35f, "LEVEL ${ev.level}", 0xFF4FC3F7.toInt(), 1.4f)
                 audio.play(SoundEffect.LEVEL_UP)
             }
             is GameEvent.GameOver -> {
                 audio.play(SoundEffect.GAME_OVER)
+                progress.recordRun(engine.score, engine.level)
+                unlock(progress.check())
+                saveProgress()
                 recordScore()
+            }
+            is GameEvent.Spill -> {
+                progress.recordSpill()
+                val (px, py) = cellCenter(ev.row.toFloat(), ev.toCol.toFloat())
+                val label = if (ev.penalty > 0) "SPILL -${ev.penalty}" else "SPILL!"
+                addPopup(px, py - cell * 0.6f, label, 0xFFFFB74D.toInt())
+                addPopup(px, py - cell, "NO RESERVE LEFT", 0xFFE53935.toInt(), 0.8f)
+                audio.play(SoundEffect.LAND)
+                haptic()
             }
             is GameEvent.Slid -> Unit
         }
@@ -434,6 +517,7 @@ class GameView(context: Context) : View(context) {
     }
 
     private fun haptic() {
+        if (!hapticsEnabled) return
         performHapticFeedback(HapticFeedbackConstants.CONFIRM)
     }
 
@@ -454,7 +538,7 @@ class GameView(context: Context) : View(context) {
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
         drawHud(canvas)
         drawDropTimer(canvas)
-        drawScoresButton(canvas)
+        drawButtons(canvas)
         drawGrid(canvas)
         drawSeesaws(canvas)
         drawMarbles(canvas)
@@ -464,13 +548,18 @@ class GameView(context: Context) : View(context) {
         drawStars(canvas)
         drawPopups(canvas)
         if (engine.gameOver) drawGameOver(canvas)
-        drawHighScores(canvas)
+        when (modal) {
+            Modal.SCORES -> drawHighScores(canvas)
+            Modal.STATS -> drawStats(canvas)
+            Modal.SETTINGS -> drawSettings(canvas)
+            Modal.NONE -> Unit
+        }
     }
 
     /** Thin bar above the board: when it drains the marble drops itself into a random column. */
     private fun drawDropTimer(canvas: Canvas) {
         if (engine.gameOver || engine.active != null) return
-        val fraction = (engine.timeLeft / Config.DROP_TIMER_SECONDS).coerceIn(0f, 1f)
+        val fraction = (engine.timeLeft / Config.dropTimerSeconds(engine.level)).coerceIn(0f, 1f)
         val h = 4f * density
         val top = gridY - h - 2f * density
         val left = gridX
@@ -497,6 +586,27 @@ class GameView(context: Context) : View(context) {
         textDimPaint.textSize = 11f * density
         canvas.drawText("max wt ${engine.maxWeight()}", width - pad, pad + 28f * density, textDimPaint)
 
+        // the running streak and how long it has left to be extended
+        if (engine.streak >= 2) {
+            textDimPaint.textAlign = Paint.Align.RIGHT
+            textDimPaint.color = 0xFFFFD54F.toInt()
+            textDimPaint.textSize = 11f * density
+            canvas.drawText("STREAK x${engine.streak}", width - pad, pad + 46f * density, textDimPaint)
+            val barW = 54f * density
+            val barH = 2f * density
+            val frac = (engine.streakTimeLeft / Config.STREAK_WINDOW).coerceIn(0f, 1f)
+            timerFillPaint.color = 0xFFFFD54F.toInt()
+            timerFillPaint.alpha = 220
+            canvas.drawRect(
+                width - pad - barW, pad + 50f * density,
+                width - pad - barW + barW * frac, pad + 50f * density + barH,
+                timerFillPaint
+            )
+            timerFillPaint.color = 0xFF4FC3F7.toInt()
+            textDimPaint.textAlign = Paint.Align.LEFT
+            textDimPaint.color = 0xFF90A4AE.toInt()
+        }
+
         // next queue, centred
         val cx = width / 2f
         centerTextPaint.textSize = 10f * density
@@ -512,37 +622,209 @@ class GameView(context: Context) : View(context) {
         }
     }
 
-    /** Bottom-of-screen button that opens the on-device high score list. */
-    private fun drawScoresButton(canvas: Canvas) {
-        if (engine.gameOver || scoresRect.isEmpty) return
-        scoresFill.alpha = if (pressScores) 64 else 28
-        val radius = scoresRect.height() / 2f
-        canvas.drawRoundRect(scoresRect, radius, radius, scoresFill)
-        scoresStroke.alpha = 110
-        canvas.drawRoundRect(scoresRect, radius, radius, scoresStroke)
-
-        centerTextPaint.textSize = 12f * density
-        centerTextPaint.color = Color.WHITE
-        centerTextPaint.alpha = 235
-        // the icon is positioned from its left edge, so the label must be left-aligned too
-        centerTextPaint.textAlign = Paint.Align.LEFT
-        val label = "HIGH SCORES"
-        val textWidth = centerTextPaint.measureText(label)
-        val iconRadius = 7f * density
-        val gap = 7f * density
-        val contentWidth = iconRadius * 2f + gap + textWidth
-        val startX = scoresRect.centerX() - contentWidth / 2f
-        val cy = scoresRect.centerY()
-        starFill.alpha = 255
-        starEdge.alpha = 255
-        drawStar(canvas, startX + iconRadius, cy, iconRadius)
-        starFill.alpha = 255
-        starEdge.alpha = 255
-        val baseline = cy - (centerTextPaint.descent() + centerTextPaint.ascent()) / 2f
-        canvas.drawText(label, startX + iconRadius * 2f + gap, baseline, centerTextPaint)
-        centerTextPaint.textAlign = Paint.Align.CENTER
+    /** Bottom row of pills: high scores, lifetime stats and settings. */
+    private fun drawButtons(canvas: Canvas) {
+        if (engine.gameOver) return
+        centerTextPaint.textSize = 10f * density
+        for ((i, rect) in buttonRects.withIndex()) {
+            if (rect.isEmpty) continue
+            scoresFill.alpha = if (pressButton == i) 64 else 28
+            val radius = rect.height() / 2f
+            canvas.drawRoundRect(rect, radius, radius, scoresFill)
+            scoresStroke.alpha = 110
+            canvas.drawRoundRect(rect, radius, radius, scoresStroke)
+            centerTextPaint.color = Color.WHITE
+            centerTextPaint.alpha = 235
+            val label = when (Button.values()[i]) {
+                Button.SCORES -> "SCORES"
+                Button.STATS -> "STATS"
+                Button.SETTINGS -> "SETTINGS"
+            }
+            val baseline = rect.centerY() - (centerTextPaint.descent() + centerTextPaint.ascent()) / 2f
+            canvas.drawText(label, rect.centerX(), baseline, centerTextPaint)
+        }
         centerTextPaint.alpha = 255
         centerTextPaint.color = Color.WHITE
+    }
+
+    /** Lifetime totals plus the achievement grid. */
+    private fun drawStats(canvas: Canvas) {
+        if (modal != Modal.STATS) return
+        dimPaint.alpha = 0xE6
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
+
+        val pad = 18f * density
+        val rowH = 26f * density
+        val panelW = min(width * 0.9f, 340f * density)
+        val panelH = 386f * density
+        val panel = RectF(
+            width / 2f - panelW / 2f, (height - panelH) / 2f,
+            width / 2f + panelW / 2f, (height + panelH) / 2f
+        )
+        val radius = 16f * density
+        canvas.drawRoundRect(panel, radius, radius, panelFill)
+        canvas.drawRoundRect(panel, radius, radius, panelStroke)
+
+        panelTextPaint.color = Color.WHITE
+        panelTextPaint.isFakeBoldText = true
+        panelTextPaint.textSize = 20f * density
+        canvas.drawText("PLAYER STATS", panel.centerX(), panel.top + pad + 14f * density, panelTextPaint)
+        panelTextPaint.isFakeBoldText = false
+        panelTextPaint.textSize = 10f * density
+        panelTextPaint.color = 0xFF90A4AE.toInt()
+        canvas.drawText(
+            "LIFETIME ON THIS DEVICE",
+            panel.centerX(), panel.top + pad + 32f * density, panelTextPaint
+        )
+
+        val leftX = panel.left + 22f * density
+        val rightX = panel.centerX() + 6f * density
+        val colW = panel.centerX() - panel.left - 22f * density
+
+        fun stat(x: Float, y: Float, label: String, value: Int) {
+            textDimPaint.textSize = 9f * density
+            textDimPaint.color = 0xFF90A4AE.toInt()
+            textDimPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText(label, x, y, textDimPaint)
+            datePaint.textSize = 15f * density
+            datePaint.color = Color.WHITE
+            canvas.drawText("$value", x + colW, y, datePaint)
+        }
+
+        var rowY = panel.top + 74f * density
+        stat(leftX, rowY, "BEST LEVEL", progress.bestLevel)
+        stat(rightX, rowY, "BEST SCORE", progress.bestScore)
+        rowY += rowH
+        stat(leftX, rowY, "BIGGEST CLEAR", progress.biggestClear)
+        stat(rightX, rowY, "MARBLES CLEARED", progress.totalCleared)
+        rowY += rowH
+        stat(leftX, rowY, "RUNS PLAYED", progress.runsPlayed)
+        stat(rightX, rowY, "MARBLES TOSSED", progress.totalTosses)
+        rowY += rowH
+        stat(leftX, rowY, "SPILLS", progress.totalSpills)
+
+        val achTop = rowY + 20f * density
+        panelTextPaint.textSize = 11f * density
+        panelTextPaint.color = 0xFF4FC3F7.toInt()
+        canvas.drawText(
+            "ACHIEVEMENTS ${progress.unlockedCount}/${Achievement.values().size}",
+            panel.centerX(), achTop, panelTextPaint
+        )
+
+        val achRowH = 22f * density
+        for ((i, achievement) in Achievement.values().withIndex()) {
+            val y = achTop + 20f * density + i * achRowH
+            val got = progress.isUnlocked(achievement)
+            rankPaint.textSize = 12f * density
+            rankPaint.color = if (got) 0xFFFFD54F.toInt() else 0xFF5C6B7A.toInt()
+            canvas.drawText(achievement.title, leftX, y, rankPaint)
+            datePaint.textSize = 9f * density
+            datePaint.color = if (got) 0xFFFFD54F.toInt() else 0xFF44515E.toInt()
+            canvas.drawText(if (got) "UNLOCKED" else "LOCKED", rightX + colW, y, datePaint)
+        }
+
+        panelTextPaint.textSize = 11f * density
+        panelTextPaint.color = 0xFF90CAF9.toInt()
+        canvas.drawText("TAP TO CLOSE", panel.centerX(), panel.bottom - 16f * density, panelTextPaint)
+    }
+
+    /** Audio and feedback toggles; each row flips on tap. */
+    private fun drawSettings(canvas: Canvas) {
+        if (modal != Modal.SETTINGS) return
+        dimPaint.alpha = 0xE6
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
+
+        val (panel, rows) = settingsLayout()
+        val radius = 16f * density
+        canvas.drawRoundRect(panel, radius, radius, panelFill)
+        canvas.drawRoundRect(panel, radius, radius, panelStroke)
+
+        panelTextPaint.color = Color.WHITE
+        panelTextPaint.isFakeBoldText = true
+        panelTextPaint.textSize = 20f * density
+        canvas.drawText("SETTINGS", panel.centerX(), panel.top + 32f * density, panelTextPaint)
+        panelTextPaint.isFakeBoldText = false
+        panelTextPaint.textSize = 10f * density
+        panelTextPaint.color = 0xFF90A4AE.toInt()
+        canvas.drawText("AUDIO & FEEDBACK", panel.centerX(), panel.top + 50f * density, panelTextPaint)
+
+        val values = listOf(musicEnabled, effectsEnabled, hapticsEnabled)
+        for ((i, entry) in rows.withIndex()) {
+            val (rect, setting) = entry
+            val on = values[i]
+            val cy = rect.centerY()
+            rankPaint.textSize = 13f * density
+            rankPaint.color = Color.WHITE
+            canvas.drawText(
+                when (setting) {
+                    Setting.MUSIC -> "MUSIC"
+                    Setting.EFFECTS -> "SOUND EFFECTS"
+                    Setting.HAPTICS -> "VIBRATION"
+                },
+                rect.left, cy - (rankPaint.descent() + rankPaint.ascent()) / 2f, rankPaint
+            )
+
+            val pillW = 52f * density
+            val pillH = 24f * density
+            val pill = RectF(rect.right - pillW, cy - pillH / 2f, rect.right, cy + pillH / 2f)
+            timerFillPaint.color = if (on) 0xFF66BB6A.toInt() else 0xFF44515E.toInt()
+            timerFillPaint.alpha = 70
+            canvas.drawRoundRect(pill, pillH / 2f, pillH / 2f, timerFillPaint)
+            panelTextPaint.textSize = 10f * density
+            panelTextPaint.color = if (on) 0xFFA5D6A7.toInt() else 0xFF90A4AE.toInt()
+            canvas.drawText(
+                if (on) "ON" else "OFF", pill.centerX(),
+                cy - (panelTextPaint.descent() + panelTextPaint.ascent()) / 2f,
+                panelTextPaint
+            )
+            canvas.drawLine(rect.left, rect.bottom, rect.right, rect.bottom, cellStroke)
+        }
+        timerFillPaint.color = 0xFF4FC3F7.toInt()
+        timerFillPaint.alpha = 220
+
+        panelTextPaint.textSize = 11f * density
+        panelTextPaint.color = 0xFF90CAF9.toInt()
+        canvas.drawText("TAP TO CLOSE", panel.centerX(), panel.bottom - 18f * density, panelTextPaint)
+    }
+
+    private fun settingsLayout(): Pair<RectF, List<Pair<RectF, Setting>>> {
+        val settings = Setting.values()
+        val rowH = 46f * density
+        val panelW = min(width * 0.88f, 320f * density)
+        val panelH = 78f * density + settings.size * rowH + 44f * density
+        val panel = RectF(
+            width / 2f - panelW / 2f, (height - panelH) / 2f,
+            width / 2f + panelW / 2f, (height + panelH) / 2f
+        )
+        val top = panel.top + 78f * density
+        val rows = settings.mapIndexed { i, setting ->
+            RectF(
+                panel.left + 22f * density, top + i * rowH,
+                panel.right - 22f * density, top + (i + 1) * rowH
+            ) to setting
+        }
+        return panel to rows
+    }
+
+    private fun toggleSetting(setting: Setting) {
+        when (setting) {
+            Setting.MUSIC -> {
+                musicEnabled = !musicEnabled
+                audio.setMusicEnabled(musicEnabled)
+                prefs.edit().putBoolean(KEY_MUSIC, musicEnabled).apply()
+            }
+            Setting.EFFECTS -> {
+                effectsEnabled = !effectsEnabled
+                audio.setEffectsEnabled(effectsEnabled)
+                prefs.edit().putBoolean(KEY_EFFECTS, effectsEnabled).apply()
+                if (effectsEnabled) audio.play(SoundEffect.MATCH) // audible confirmation
+            }
+            Setting.HAPTICS -> {
+                hapticsEnabled = !hapticsEnabled
+                prefs.edit().putBoolean(KEY_HAPTICS, hapticsEnabled).apply()
+                haptic()
+            }
+        }
     }
 
     private fun drawGrid(canvas: Canvas) {
@@ -555,6 +837,24 @@ class GameView(context: Context) : View(context) {
                 rect.set(x + 1.5f, y + 1.5f, x + cell - 1.5f, y + cell - 1.5f)
                 canvas.drawRoundRect(rect, rad, rad, cellPaint)
                 canvas.drawRoundRect(rect, rad, rad, cellStroke)
+            }
+        }
+        // near-full columns glow so a pan that is about to spill is readable at a glance:
+        // amber while the column still has its spill reserve, red once that reserve is gone
+        if (!engine.gameOver) {
+            val glow = sin(pulse) * 0.5f + 0.5f
+            for (c in 0 until Config.COLS) {
+                if (topOfColumn(c) > 2f) continue
+                val canSpill = engine.canSpill(c)
+                dangerPaint.color = if (canSpill) 0xFFFF7043.toInt() else 0xFFE53935.toInt()
+                dangerPaint.alpha =
+                    (if (canSpill) 45 + 75 * glow else 60 + 110 * glow).toInt().coerceIn(0, 255)
+                val x = gridX + c * cell
+                canvas.drawRect(
+                    x + 1.5f, gridY + 1.5f,
+                    x + cell - 1.5f, gridY + cell * 2f - 1.5f,
+                    dangerPaint
+                )
             }
         }
         if (pressCol in 0 until Config.COLS && !engine.gameOver) {
@@ -770,7 +1070,7 @@ class GameView(context: Context) : View(context) {
 
     /** Modal top-ten list of this device's best runs. */
     private fun drawHighScores(canvas: Canvas) {
-        if (!showHighScores) return
+        if (modal != Modal.SCORES) return
         dimPaint.alpha = 0xE6
         canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), dimPaint)
 
@@ -839,8 +1139,16 @@ class GameView(context: Context) : View(context) {
     private fun formatDate(timestamp: Long): String =
         if (timestamp <= 0L) "" else dateFormat.format(Date(timestamp))
 
+    private enum class Button { SCORES, STATS, SETTINGS }
+    private enum class Modal { NONE, SCORES, STATS, SETTINGS }
+    private enum class Setting { MUSIC, EFFECTS, HAPTICS }
+
     companion object {
         private const val KEY_HIGH_SCORES = "high_scores"
         private const val KEY_LEGACY_BEST = "best"
+        private const val KEY_PROGRESS = "progress"
+        private const val KEY_MUSIC = "music"
+        private const val KEY_EFFECTS = "effects"
+        private const val KEY_HAPTICS = "haptics"
     }
 }

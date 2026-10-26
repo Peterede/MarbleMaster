@@ -56,10 +56,33 @@ object Config {
     const val SLIDE_VISUAL_RATE = 18.0f
 
     /**
-     * Seconds the player has to pick a column for the next marble. When the clock runs out
-     * the marble drops itself into a random column.
+     * Seconds the player has at level 1 to pick a column for the next marble. When the clock
+     * runs out the marble drops itself into a random column.
      */
     const val DROP_TIMER_SECONDS = 5.0f
+
+    /** Each level takes this much thinking time away from the placement clock. */
+    const val DROP_TIMER_STEP_SECONDS = 0.35f
+
+    /** Floor for the placement clock so the late levels stay playable. */
+    const val DROP_TIMER_MIN_SECONDS = 1.8f
+
+    /** Placement time allowed at [level]; the clock shrinks as the player climbs. */
+    fun dropTimerSeconds(level: Int): Float =
+        (DROP_TIMER_SECONDS - (level - 1) * DROP_TIMER_STEP_SECONDS).coerceAtLeast(DROP_TIMER_MIN_SECONDS)
+
+    /** A spill rescues the run but costs points; the price grows with the level. */
+    const val SPILL_PENALTY_BASE = 20
+    const val SPILL_PENALTY_PER_LEVEL = 10
+
+    fun spillPenalty(level: Int): Int =
+        SPILL_PENALTY_BASE + SPILL_PENALTY_PER_LEVEL * (level - 1).coerceAtLeast(0)
+
+    /**
+     * Each column can only spill once. The reserve refills when the stack clears back out of
+     * the danger zone, i.e. when this many cells at the top of the column are empty again.
+     */
+    const val SPILL_RECHARGE_ROOM = 3
 
     const val QUEUE_SIZE = 3
     const val BASE_COLORS = 5
@@ -69,6 +92,14 @@ object Config {
 
     const val MATCH_MIN = 3
     const val MATCH_POINTS = 10
+
+    /**
+     * Consecutive clears pay a streak bonus. Each clear extends the streak and refills the
+     * window; a drop that clears nothing ends it, so chaining good placements is rewarded.
+     */
+    const val STREAK_WINDOW = 6.0f
+    const val STREAK_BONUS_PER_STEP = 0.25f
+    const val STREAK_MAX_BONUS_STEPS = 4
     const val LARGE_GROUP_BONUS = 20
     const val LAUNCH_BASE_BONUS = 50
     const val LAUNCH_LEVEL_BONUS = 25

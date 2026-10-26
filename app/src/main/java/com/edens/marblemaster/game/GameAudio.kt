@@ -67,6 +67,14 @@ class GameAudio(context: Context) {
     @Volatile
     private var released = false
 
+    /** Player setting: the soundtrack is silenced while true. */
+    @Volatile
+    private var musicMuted = false
+
+    /** Player setting: one-shot effects are silenced while true. */
+    @Volatile
+    private var effectsMuted = false
+
     /** True while this app holds audio focus, so the platform reports interruptions. */
     @Volatile
     private var hasFocus = false
@@ -117,7 +125,7 @@ class GameAudio(context: Context) {
 
     /** Starts (or resumes) the music loop. Safe to call repeatedly. */
     fun startMusic() {
-        if (released) return
+        if (released || musicMuted) return
         musicWanted = true
         resumeAfterFocusGain = false
         ensureWatchdog()
@@ -164,9 +172,21 @@ class GameAudio(context: Context) {
         pauseEffectTracks()
     }
 
+    /** Player setting: turns the looping soundtrack on or off. */
+    fun setMusicEnabled(enabled: Boolean) {
+        musicMuted = !enabled
+        if (enabled) startMusic() else pauseMusic()
+    }
+
+    /** Player setting: turns the one-shot effects on or off. */
+    fun setEffectsEnabled(enabled: Boolean) {
+        effectsMuted = !enabled
+    }
+
     fun play(effect: SoundEffect) {
         if (released) return
         toGameOverIfNeeded(effect)
+        if (effectsMuted) return
         if (isThrottled(effect)) return
         val volume = volumeFor(effect)
         val existing = effects[effect]

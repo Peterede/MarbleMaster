@@ -81,7 +81,13 @@ data class MatchCell(
 )
 
 sealed class GameEvent {
-    data class Match(val cells: List<MatchCell>, val colors: Set<Int>, val points: Int, val chain: Int) : GameEvent()
+    data class Match(
+        val cells: List<MatchCell>,
+        val colors: Set<Int>,
+        val points: Int,
+        val chain: Int,
+        val streak: Int = 0
+    ) : GameEvent()
     data class Launched(
         val color: Int,
         val weight: Int,
@@ -111,7 +117,22 @@ sealed class GameEvent {
         val row: Int,
         val col: Int,
         val cells: List<MatchCell>,
-        val points: Int
+        val points: Int,
+        val streak: Int = 0
+    ) : GameEvent()
+
+    /**
+     * A marble that would rest in the top row rolled into the pan's other column instead.
+     * [penalty] is the score it cost, and the column now has no spill reserve left.
+     */
+    data class Spill(
+        val fromCol: Int,
+        val toCol: Int,
+        val row: Int,
+        val color: Int,
+        val weight: Int,
+        val power: PowerKind = PowerKind.NONE,
+        val penalty: Int = 0
     ) : GameEvent()
 
     data class Slid(val fromRow: Int, val fromCol: Int, val toRow: Int, val toCol: Int) : GameEvent()

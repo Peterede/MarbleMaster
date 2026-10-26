@@ -238,6 +238,175 @@ fun main() {
         check("timer pauses while a marble is falling", e.timeLeft == Config.DROP_TIMER_SECONDS)
     }
 
+    // --- placement timer shrinks as the level climbs ---
+    run {
+        check("level 1 allows the full time", Config.dropTimerSeconds(1) == Config.DROP_TIMER_SECONDS)
+        check("higher levels allow less time", Config.dropTimerSeconds(2) < Config.dropTimerSeconds(1))
+        check("the clock keeps shrinking each level", (3..10).all { Config.dropTimerSeconds(it) < Config.dropTimerSeconds(it - 1) })
+        check("the clock never drops below the floor", (1..1000).all { Config.dropTimerSeconds(it) >= Config.DROP_TIMER_MIN_SECONDS })
+        check("the floor is reached late in the run", Config.dropTimerSeconds(999) == Config.DROP_TIMER_MIN_SECONDS)
+    }
+
+    // --- consecutive clears build a streak bonus ---
+    run {
+        val e = GameEngine(Random(31))
+        placeDirect(e, 11, 0, 0, 1)
+        placeDirect(e, 11, 1, 0, 1)
+        placeDirect(e, 11, 2, 0, 1)
+        e.update(1f / 60f)
+        val first = e.drainEvents().filterIsInstance<GameEvent.Match>().first()
+        check("a clear starts the streak at one", e.streak == 1 && first.streak == 1)
+        check("a lone clear pays the base points", first.points == Config.MATCH_POINTS * 3)
+
+        placeDirect(e, 11, 0, 2, 1)
+        placeDirect(e, 11, 1, 2, 1)
+        placeDirect(e, 11, 2, 2, 1)
+        e.update(1f / 60f)
+        val second = e.drainEvents().filterIsInstance<GameEvent.Match>().first()
+        check("the next clear extends the streak", e.streak == 2 && second.streak == 2)
+        check("the second clear pays the streak bonus", second.points > Config.MATCH_POINTS * 3)
+
+        e.drop(4, 5, 1)
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        check("a drop that clears nothing breaks the streak", e.streak == 0)
+    }
+
+    // --- an overloaded column spills instead of ending the run ---
+    run {
+        val e = GameEngine(Random(41))
+        // the pillar never tilts, so it makes a clean test bed for the spill rule
+        for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
+        e.addScore(500)
+        e.drop(Config.PILLAR_COL, 3, 1)
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        e.update(1f / 60f)
+        val events = e.drainEvents()
+        val spill = events.filterIsInstance<GameEvent.Spill>().firstOrNull()
+        check("a top-row marble spills sideways", spill != null && !e.gameOver)
+        check(
+            "the spill lands beside the pillar",
+            spill != null && spill.toCol in listOf(Config.PILLAR_COL - 1, Config.PILLAR_COL + 1)
+        )
+        check("the spill keeps the marble's colour", spill != null && spill.color == 3)
+        check("the top row is clear after the spill", (0 until Config.COLS).all { e.grid[0][it] == null })
+        check("the spilled marble stays on the board", countMarbles(e) == Config.ROWS)
+        check(
+            "the spill costs points",
+            spill != null && spill.penalty == Config.spillPenalty(1) && e.score == 500 - spill.penalty
+        )
+        check("the spill is counted", e.spills == 1)
+        check("the column spends its spill reserve", !e.canSpill(Config.PILLAR_COL))
+    }
+
+    // --- a spill penalty can never push the score below zero ---
+    run {
+        val e = GameEngine(Random(45))
+        for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
+        e.addScore(5) // less than the level-1 spill penalty
+        e.drop(Config.PILLAR_COL, 3, 1)
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        e.update(1f / 60f)
+        check("a spill floors the score at zero", e.score == 0)
+    }
+
+    // --- a topped-out column cannot spill twice without clearing ---
+    run {
+        val e = GameEngine(Random(43))
+        for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
+        e.drop(Config.PILLAR_COL, 3, 1)
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        e.update(1f / 60f)
+        check("the first spill is rescued", !e.gameOver && e.spills == 1)
+        e.drainEvents()
+
+        e.drop(Config.PILLAR_COL, 5, 1)
+        guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        e.update(1f / 60f)
+        check("topping out the same column again ends the run", e.gameOver)
+        check("the second topping out reports game over", e.drainEvents().any { it is GameEvent.GameOver })
+    }
+
+    // --- clearing the stack back out of the danger zone refills the reserve ---
+    run {
+        val e = GameEngine(Random(44))
+        for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
+        e.drop(Config.PILLAR_COL, 3, 1)
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        e.update(1f / 60f)
+        check("reserve is spent after the spill", !e.canSpill(Config.PILLAR_COL))
+        // a clear takes the stack well below the danger zone
+        for (r in Config.SPILL_RECHARGE_ROOM until Config.ROWS) e.grid[r][Config.PILLAR_COL] = null
+        e.update(1f / 60f)
+        check("clearing the column refills the reserve", e.canSpill(Config.PILLAR_COL))
+    }
+
+    // --- spill penalties grow with the level ---
+    run {
+        check("a spill costs more each level", (2..10).all { Config.spillPenalty(it) > Config.spillPenalty(it - 1) })
+        check("a level-one spill is cheap but real", Config.spillPenalty(1) > 0)
+    }
+
+    // --- a pan with no room left ends the run ---
+    run {
+        val e = GameEngine(Random(42))
+        // three different colours keep the full columns from matching horizontally
+        for (r in 0 until Config.ROWS) {
+            placeDirect(e, r, 3, 0, 1)
+            placeDirect(e, r, 4, 1, 1)
+            placeDirect(e, r, 5, 2, 1)
+        }
+        e.update(1f / 60f)
+        val events = e.drainEvents()
+        check("a full pan with no room ends the run", e.gameOver)
+        check("the run ends with a game-over event", events.any { it is GameEvent.GameOver })
+    }
+
+    // --- lifetime stats and achievements ---
+    run {
+        val p = PlayerProgress()
+        check("a fresh profile has no achievements", p.check().isEmpty() && p.unlockedCount == 0)
+        p.recordToss()
+        check("the first toss unlocks Blast Off", p.check() == listOf(Achievement.BLAST_OFF))
+        p.recordClear(9)
+        check("an eight-plus clear unlocks Blob Buster", p.check() == listOf(Achievement.BLOB_BUSTER))
+        check("clear totals accumulate", p.totalCleared == 9 && p.biggestClear == 9)
+        p.recordLevel(5)
+        check("reaching level five unlocks High Climber", p.check() == listOf(Achievement.HIGH_CLIMBER))
+        p.recordRun(1200, 5)
+        check("a run records score, level and count", p.runsPlayed == 1 && p.bestScore == 1200)
+        check(
+            "a run can unlock several achievements at once",
+            p.check().containsAll(listOf(Achievement.FIRST_RUN, Achievement.POINT_HOARDER))
+        )
+        p.recordSpill()
+        p.recordSpill()
+        check("spills accumulate in the lifetime stats", p.totalSpills == 2)
+        p.recordClear(100)
+        check("clearing a hundred marbles unlocks Century", p.check() == listOf(Achievement.CENTURY))
+
+        val restored = PlayerProgress()
+        restored.load(p.serialize())
+        check("progress survives a round trip", restored.serialize() == p.serialize())
+        check("the spill count survives a round trip", restored.totalSpills == 2)
+        check("unlocked achievements survive a round trip", restored.unlockedAchievements == p.unlockedAchievements)
+    }
+
+    run {
+        val p = PlayerProgress()
+        p.load("runs=3;bestLevel=0;cleared=oops;ach=BLAST_OFF,NOT_REAL")
+        check("malformed stats fall back safely", p.runsPlayed == 3 && p.bestLevel == 1 && p.totalCleared == 0)
+        check("malformed spill counts fall back safely", p.totalSpills == 0)
+        check("unknown achievements are ignored", p.unlockedAchievements == setOf(Achievement.BLAST_OFF))
+        p.load(null)
+        check("missing progress loads a fresh profile", p.runsPlayed == 0 && p.unlockedCount == 0)
+    }
+
     run {
         val e = GameEngine(Random(8))
         // never touch the board: the game must drop marbles for the player
