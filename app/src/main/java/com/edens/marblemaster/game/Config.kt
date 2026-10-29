@@ -84,11 +84,24 @@ object Config {
      */
     const val SPILL_RECHARGE_ROOM = 3
 
+    /** Goals rolled per run, and the points each one pays when it is met. */
+    const val OBJECTIVE_COUNT = 3
+    const val OBJECTIVE_REWARD = 150
+
     const val QUEUE_SIZE = 3
     const val BASE_COLORS = 5
     const val MAX_COLORS = 6
     const val COLOR_LEVEL = 3
     const val MARBLES_PER_LEVEL = 12
+
+    /**
+     * Once colours, weights and the clock have all maxed out, the board itself starts to close:
+     * one column locks at [CLOSED_COLUMN_LEVEL], a second at [SECOND_CLOSED_COLUMN_LEVEL] and a
+     * third at [THIRD_CLOSED_COLUMN_LEVEL], which only the longest runs ever see.
+     */
+    const val CLOSED_COLUMN_LEVEL = 10
+    const val SECOND_CLOSED_COLUMN_LEVEL = 15
+    const val THIRD_CLOSED_COLUMN_LEVEL = 20
 
     const val MATCH_MIN = 3
     const val MATCH_POINTS = 10

@@ -7,6 +7,7 @@ They come back as power-ups.
 • Three or more marbles of the same colour in a line clear in a flood-fill blob.
 • Cleared marbles compact the columns, which can set off chain reactions and bigger multipliers.
 • Keep clearing without a miss to build a streak: each consecutive clear within six seconds adds 25% to the points, up to double.
+• Chase the three objectives every run rolls for you — clear a big blob, launch marbles, reach a level — each one pays bonus points the moment you hit it.
 • Watch the scales: a heavy marble dropped on the wrong pan can launch a whole stack.
 • An overloaded column spills its top marble into the other pan, at the cost of points and that column's single spill reserve. Clear the stack back out of the danger zone to earn the reserve again — overfill the same column twice without clearing it and the run is over.
 
@@ -23,7 +24,9 @@ Each of the four scales pivots on its own. Weight differences tip the beam, stee
 • Cascade clears and chain multipliers
 • Overflow rescue: overstacked columns spill sideways, for a price, once per column until cleared
 • Amber and red danger glow shows which topped-out columns still have a spill left
+• Three fresh objectives every run, each worth bonus points
 • Levels that add colours and heavier marbles as you progress
+• Locked columns from level 10, when colours, weights and the clock have all maxed out and the board starts closing in
 • Best score and a top-ten high score list saved on your device
 • Each high score keeps the date it was set
 • Lifetime stats — including the spills you have survived — and six achievements to chase across runs

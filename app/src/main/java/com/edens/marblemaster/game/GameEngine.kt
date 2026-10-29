@@ -74,6 +74,18 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
     /** Columns that have already spent their one spill; see [Config.SPILL_RECHARGE_ROOM]. */
     private val spillSpent = BooleanArray(Config.COLS)
 
+    /** Columns the late levels have closed off. Nothing new can enter one. */
+    private val closedCols = BooleanArray(Config.COLS)
+
+    /** Goals rolled at the start of this run; each one pays points when it is met. */
+    val objectives = ArrayList<Objective>(Config.OBJECTIVE_COUNT)
+
+    /** Run counters the objectives read: marbles tossed, biggest clear, best streak, cascades. */
+    private var launches = 0
+    private var bestGroup = 0
+    private var bestStreak = 0
+    private var cascades = 0
+
     private var nextId = 1
     private var clearAwards = 0
     private val slideCooldown = FloatArray(Config.COLS)
@@ -81,6 +93,16 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
     private val rngBonus = java.util.Random()
 
     init {
+        restart()
+    }
+
+    /**
+     * Restart with a fixed seed so the daily board deals the same queue, goals and launches
+     * every time it is played on that day.
+     */
+    fun restart(seed: Long) {
+        rng.setSeed(seed)
+        rngBonus.setSeed(seed xor 0x2545F4914F6CDD1DL)
         restart()
     }
 
@@ -103,7 +125,13 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         powerupsUsed = 0
         spills = 0
         spillSpent.fill(false)
+        closedCols.fill(false)
         airborne.clear()
+        launches = 0
+        bestGroup = 0
+        bestStreak = 0
+        cascades = 0
+        rollObjectives()
         pendingEvents.clear()
     }
 
@@ -135,7 +163,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
     }
 
     private fun spawn(col: Int, color: Int, weight: Int, power: PowerKind): Boolean {
-        if (gameOver || active != null || col !in 0 until Config.COLS) return false
+        if (gameOver || active != null || col !in 0 until Config.COLS || closedCols[col]) return false
         val m = Marble(
             nextId++, color, weight, row = -1, col = col,
             visualRow = -1f, visualCol = col.toFloat(), power = power
@@ -155,7 +183,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         // the player only has a few seconds to pick a column before the marble drops itself
         if (active == null) {
             timeLeft = max(0f, timeLeft - d)
-            if (timeLeft == 0f) drop(rng.nextInt(Config.COLS))
+            if (timeLeft == 0f) drop(openRandomColumn())
         }
 
         // a streak only survives while the next clear arrives inside the window
@@ -181,6 +209,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         processSlides()
         if (active == null) resolveMatches()
         updateLevel()
+        updateObjectives()
         rechargeSpills()
         checkGameOver()
     }
@@ -250,6 +279,8 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             for (r in 0 until Config.ROWS) grid[r][c]?.let { tossed.add(it) }
         }
         if (tossed.isEmpty()) return
+
+        launches += tossed.size
 
         // the pan tips over: everything on it leaves the board at once
         for (m in tossed) grid[m.row][m.col] = null
@@ -321,7 +352,8 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
                 a.vx = -abs(a.vx) * Config.AIR_WALL_BOUNCE
             }
 
-            val col = Math.round(a.colF).coerceIn(0, Config.COLS - 1)
+            // a marble coming down over a closed column slides to the nearest open one
+            val col = nearestOpenColumn(Math.round(a.colF).coerceIn(0, Config.COLS - 1))
             val rest = restRow(col)
             if (a.vy > 0f && rest >= 0 && a.rowF >= rest) {
                 it.remove()
@@ -368,6 +400,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             }
         }
         if (cleared.isEmpty()) return
+        bestGroup = max(bestGroup, cleared.size)
         points = awardClear(points)
         marblesCleared += cleared.size
         powerupsUsed++
@@ -388,7 +421,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             for (c in order) {
                 if (slideCooldown[c] > 0f) continue
                 val target = c + dir
-                if (!ss.contains(target)) continue
+                if (!ss.contains(target) || closedCols[target]) continue
                 val top = topMarble(c) ?: continue
                 if (restRow(target) < 0) continue
                 val fromRow = top.row
@@ -425,6 +458,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             if (runs.isEmpty()) break
             chain++
             lastChain = chain
+            if (chain >= 2) cascades++
 
             val group = LinkedHashSet<Pair<Int, Int>>()
             val colors = HashSet<Int>()
@@ -438,6 +472,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
                 MatchCell(r, c, m.color, m.power)
             }
             var points = Config.MATCH_POINTS * group.size * chain
+            bestGroup = max(bestGroup, group.size)
             if (group.size >= Config.MATCH_MIN + 1) points += Config.LARGE_GROUP_BONUS * (group.size - Config.MATCH_MIN)
             points = awardClear(points)
             marblesCleared += group.size
@@ -457,6 +492,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         streak++
         streakTimeLeft = Config.STREAK_WINDOW
         clearAwards++
+        bestStreak = max(bestStreak, streak)
         val steps = min(streak - 1, Config.STREAK_MAX_BONUS_STEPS)
         val total = points + (points * Config.STREAK_BONUS_PER_STEP * steps).toInt()
         score += total
@@ -550,6 +586,49 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         }
     }
 
+    // ------------------------------------------------------------------ objectives
+
+    /** Roll [Config.OBJECTIVE_COUNT] distinct goals for a fresh run. */
+    private fun rollObjectives() {
+        objectives.clear()
+        val kinds = ObjectiveKind.values().toMutableList()
+        for (i in kinds.indices.reversed()) {
+            val j = rng.nextInt(i + 1)
+            val swap = kinds[i]
+            kinds[i] = kinds[j]
+            kinds[j] = swap
+        }
+        for (kind in kinds.take(Config.OBJECTIVE_COUNT)) objectives.add(Objective(kind))
+    }
+
+    /**
+     * Mirrors the run counters into the rolled goals; a goal that reaches its target pays its
+     * reward once and stays done for the rest of the run.
+     */
+    private fun updateObjectives() {
+        for (objective in objectives) {
+            if (objective.done) continue
+            val reached = when (objective.kind) {
+                ObjectiveKind.CLEAR -> marblesCleared
+                ObjectiveKind.BLOB -> bestGroup
+                ObjectiveKind.TOSS -> launches
+                ObjectiveKind.LEVEL -> level
+                ObjectiveKind.STREAK -> bestStreak
+                ObjectiveKind.CHAIN -> cascades
+                ObjectiveKind.POWER -> powerupsUsed
+            }
+            objective.progress = min(reached, objective.target)
+            if (objective.progress >= objective.target) {
+                objective.done = true
+                score += Config.OBJECTIVE_REWARD
+                pendingEvents.add(GameEvent.ObjectiveDone(objective, Config.OBJECTIVE_REWARD))
+            }
+        }
+    }
+
+    /** How many of this run's goals have been met. */
+    fun objectivesDone(): Int = objectives.count { it.done }
+
     // ------------------------------------------------------------------ meta
 
     private fun updateLevel() {
@@ -559,7 +638,82 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             // the clock shortens with the level, so trim any time already on it
             timeLeft = min(timeLeft, Config.dropTimerSeconds(level))
             pendingEvents.add(GameEvent.LevelUp(level))
+            updateClosures()
         }
+    }
+
+    /** True when the late levels have taken this column out of play. */
+    fun isClosed(col: Int): Boolean = col in 0 until Config.COLS && closedCols[col]
+
+    /** How many columns the board has closed off this run. */
+    fun closedColumnCount(): Int = closedCols.count { it }
+
+    /**
+     * Past the point where colours, weights and the clock have all maxed out, the board starts
+     * taking columns away so late runs keep getting harder instead of only longer.
+     */
+    private fun updateClosures() {
+        val wanted = when {
+            level >= Config.THIRD_CLOSED_COLUMN_LEVEL -> 3
+            level >= Config.SECOND_CLOSED_COLUMN_LEVEL -> 2
+            level >= Config.CLOSED_COLUMN_LEVEL -> 1
+            else -> 0
+        }
+        while (closedColumnCount() < wanted) {
+            val col = pickColumnToClose() ?: return
+            closedCols[col] = true
+            pendingEvents.add(GameEvent.ColumnClosed(col))
+        }
+    }
+
+    /**
+     * The emptiest open column, but only one that leaves [Config.MATCH_MIN] columns in a row open:
+     * without that guard a late run could lock itself out of any possible horizontal match.
+     */
+    private fun pickColumnToClose(): Int? {
+        val candidates = (0 until Config.COLS).filter { !closedCols[it] }
+        val safe = candidates.filter { col ->
+            val trial = closedCols.copyOf()
+            trial[col] = true
+            hasOpenRun(trial, Config.MATCH_MIN)
+        }
+        if (safe.isEmpty()) return null
+        val fills = safe.associateWith { c -> (0 until Config.ROWS).count { grid[it][c] != null } }
+        val emptiest = fills.values.min()
+        val pick = safe.filter { fills[it] == emptiest }
+        return pick[rng.nextInt(pick.size)]
+    }
+
+    /** True when at least [width] open columns sit side by side. */
+    private fun hasOpenRun(closed: BooleanArray, width: Int): Boolean {
+        var run = 0
+        for (c in 0 until Config.COLS) {
+            run = if (closed[c]) 0 else run + 1
+            if (run >= width) return true
+        }
+        return false
+    }
+
+    /** Column for an automatic drop: never one the late levels have closed. */
+    private fun openRandomColumn(): Int {
+        val open = (0 until Config.COLS).filter { !closedCols[it] }
+        return if (open.isEmpty()) 0 else open[rng.nextInt(open.size)]
+    }
+
+    /** Nearest column that can still take a marble; used when a tossed marble comes back down. */
+    private fun nearestOpenColumn(col: Int): Int {
+        if (!closedCols[col]) return col
+        var best = col
+        var bestDistance = Int.MAX_VALUE
+        for (c in 0 until Config.COLS) {
+            if (closedCols[c]) continue
+            val distance = abs(c - col)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                best = c
+            }
+        }
+        return best
     }
 
     /**
@@ -617,7 +771,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
             seesawFor(col)?.columns?.filter { it != col } ?: emptyList()
         }
         return candidates
-            .filter { it in 0 until Config.COLS && restRow(it) >= 1 }
+            .filter { it in 0 until Config.COLS && !closedCols[it] && restRow(it) >= 1 }
             .maxByOrNull { restRow(it) } ?: -1
     }
 

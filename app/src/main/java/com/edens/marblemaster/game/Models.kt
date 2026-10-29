@@ -137,5 +137,11 @@ sealed class GameEvent {
 
     data class Slid(val fromRow: Int, val fromCol: Int, val toRow: Int, val toCol: Int) : GameEvent()
     data class LevelUp(val level: Int) : GameEvent()
+
+    /** Late levels close a column: no drops, no spills and no returns can land there. */
+    data class ColumnClosed(val col: Int) : GameEvent()
+
+    /** A per-run objective was met; [reward] points were already added to the score. */
+    data class ObjectiveDone(val objective: Objective, val reward: Int) : GameEvent()
     object GameOver : GameEvent()
 }

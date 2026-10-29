@@ -4,7 +4,9 @@ import java.util.Random
 
 /**
  * Plain-JVM smoke test for GameEngine (no JUnit needed).
- * Run: kotlinc GameEngine.kt Models.kt Config.kt HighScores.kt EngineSmokeTest.kt -include-runtime -d test.jar && java -jar test.jar
+ * Run (from app/src/main/java/com/edens/marblemaster/game):
+ *   kotlinc Config.kt Models.kt Objectives.kt GameEngine.kt AudioSynth.kt HighScores.kt \
+ *     PlayerProgress.kt EngineSmokeTest.kt -include-runtime -d test.jar && java -jar test.jar
  */
 fun main() {
     var failures = 0
@@ -270,6 +272,226 @@ fun main() {
         var guard = 0
         while (e.active != null && guard++ < 600) e.update(1f / 60f)
         check("a drop that clears nothing breaks the streak", e.streak == 0)
+    }
+
+    // --- per-run objectives ---
+    run {
+        val e = GameEngine(Random(51))
+        check("three goals are rolled", e.objectives.size == Config.OBJECTIVE_COUNT)
+        check(
+            "goals are distinct",
+            e.objectives.map { it.kind }.toSet().size == Config.OBJECTIVE_COUNT
+        )
+        check("goals start unearned", e.objectives.none { it.done } && e.objectivesDone() == 0)
+
+        // every kind is pushed past its target below, so whichever three were rolled must finish
+
+        // two-step cascade: clearing the A row drops the B marbles into their own run
+        repeat(2) {
+            placeDirect(e, 11, 0, 0, 1)
+            placeDirect(e, 11, 1, 0, 1)
+            placeDirect(e, 11, 2, 0, 1)
+            placeDirect(e, 11, 3, 3, 1)
+            placeDirect(e, 10, 1, 3, 1)
+            placeDirect(e, 10, 2, 3, 1)
+            var guard = 0
+            while (e.active != null && guard++ < 600) e.update(1f / 60f)
+            e.update(1f / 60f)
+        }
+
+        // a 3x3 blob of one colour clears as a single nine-marble group
+        for (r in 9..11) for (c in 2..4) placeDirect(e, r, c, 5, 1)
+        e.update(1f / 60f)
+
+        // three bombs, each dropped onto a marble so it actually fires
+        for (col in listOf(6, 5, 7)) {
+            placeDirect(e, 11, col, col, 1)
+            e.drop(col, -1, 1, PowerKind.BOMB)
+            var guard = 0
+            while (e.active != null && guard++ < 600) e.update(1f / 60f)
+            e.update(1f / 60f)
+        }
+
+        // climb to level 6 the plain way
+        repeat(12) {
+            placeDirect(e, 11, 0, 2, 1)
+            placeDirect(e, 11, 1, 2, 1)
+            placeDirect(e, 11, 2, 2, 1)
+            var guard = 0
+            while (e.active != null && guard++ < 600) e.update(1f / 60f)
+            e.update(1f / 60f)
+        }
+        check("the run climbed to level six", e.level >= 6)
+
+        // a pan toss: six light marbles on the left, two irons on the right
+        for (i in 0 until 6) placeDirect(e, 11 - i, 0, i, 1)
+        placeDirect(e, 11, 1, 4, 9)
+        e.drop(1, 4, Config.HEAVY_WEIGHT)
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        e.update(1f / 60f)
+        check("the light pan was tossed", e.airborne.isNotEmpty())
+
+        check(
+            "every rolled goal was met by that run",
+            e.objectivesDone() == Config.OBJECTIVE_COUNT && e.objectives.all { it.done }
+        )
+        check("a met goal rests on its target", e.objectives.all { it.progress == it.target })
+    }
+
+    // --- objectives reset with the run ---
+    run {
+        val e = GameEngine(Random(52))
+        repeat(40) { e.update(0.1f) }
+        e.restart()
+        check("a restart clears goal progress", e.objectives.none { it.done } && e.objectivesDone() == 0)
+        check("a restart keeps three goals", e.objectives.size == Config.OBJECTIVE_COUNT)
+    }
+
+    // --- the late levels close columns ---
+    run {
+        val e = GameEngine(Random(61))
+
+        // three neighbouring open columns, so a clear is always possible
+        fun openTriple(): List<Int> {
+            for (start in 0..(Config.COLS - 3)) {
+                val cols = (start until start + 3).toList()
+                if (cols.none { e.isClosed(it) }) return cols
+            }
+            error("no three open columns in a row")
+        }
+
+        fun clearTriple() {
+            for (c in openTriple()) placeDirect(e, 11, c, 2, 1)
+            e.update(1f / 60f)
+        }
+
+        check("columns start open", e.closedColumnCount() == 0)
+        check("out-of-range columns are not locked", !e.isClosed(-1) && !e.isClosed(Config.COLS))
+
+        // each level is 12 cleared marbles, i.e. four three-marble clears
+        repeat((Config.CLOSED_COLUMN_LEVEL - 1) * 4) { clearTriple() }
+        val locks = e.drainEvents().filterIsInstance<GameEvent.ColumnClosed>()
+        check("level ten locks a column", e.level >= Config.CLOSED_COLUMN_LEVEL && e.closedColumnCount() == 1)
+        check("the lock is announced", locks.size == 1 && e.isClosed(locks[0].col))
+
+        repeat((Config.SECOND_CLOSED_COLUMN_LEVEL - Config.CLOSED_COLUMN_LEVEL) * 4) { clearTriple() }
+        check("level fifteen locks a second column", e.closedColumnCount() == 2)
+        check("the board always keeps a clearable run", openTriple().size == 3)
+
+        repeat((Config.THIRD_CLOSED_COLUMN_LEVEL - Config.SECOND_CLOSED_COLUMN_LEVEL) * 4) { clearTriple() }
+        check("level twenty locks a third column", e.closedColumnCount() == 3)
+        check("three locked columns still leave a clearable run", openTriple().size == 3)
+        check("the board never locks more than three columns", e.closedColumnCount() <= 3)
+
+        val closed = (0 until Config.COLS).filter { e.isClosed(it) }
+        check("a locked column refuses drops", closed.all { !e.drop(it) })
+        check("the queue survives a refused drop", e.queue.size == Config.QUEUE_SIZE)
+        val open = (0 until Config.COLS).first { !e.isClosed(it) }
+        check("an open column still takes a drop", e.drop(open))
+
+        var guard = 0
+        while (e.active != null && guard++ < 600) e.update(1f / 60f)
+        check("the run is still alive after the locks", !e.gameOver)
+
+        e.restart()
+        check("a restart reopens every column", e.closedColumnCount() == 0)
+    }
+
+    // --- daily challenge bookkeeping ---
+    run {
+        val d = DailyProgress()
+        check("a fresh install has no daily run", !d.playedOn("2026-10-29") && d.streak == 0)
+        check("the first daily starts the streak", d.record("2026-10-29", "2026-10-28", 500) && d.streak == 1)
+        check("the day's best is kept", d.todayBest == 500 && d.bestEver == 500)
+        check("replaying the day does not extend the streak", !d.record("2026-10-29", "2026-10-28", 900))
+        check("a better replay raises the day's best", d.todayBest == 900 && d.bestEver == 900)
+        check("the next day continues the streak", d.record("2026-10-30", "2026-10-29", 300) && d.streak == 2)
+        check("a missed day resets the streak", d.record("2026-11-02", "2026-11-01", 100) && d.streak == 1)
+        check("the best streak is remembered", d.bestStreak == 2)
+        check("a lapsed streak reads as zero", d.currentStreak("2026-11-05", "2026-11-04") == 0)
+        check("yesterday still counts as current", d.currentStreak("2026-11-03", "2026-11-02") == 1)
+
+        val restored = DailyProgress()
+        restored.load(d.serialize())
+        check("daily progress survives a round trip", restored.serialize() == d.serialize())
+        restored.load("date=;today=oops;streak=-3;bestStreak=x")
+        check("malformed daily progress falls back safely", restored.streak == 0 && restored.todayBest == 0)
+        check("a wiped daily reads as never played", !restored.playedOn("2026-10-29"))
+
+        check("the seed is stable for a day", DailyProgress.seedFor("2026-10-29") == DailyProgress.seedFor("2026-10-29"))
+        check("the seed changes by day", DailyProgress.seedFor("2026-10-29") != DailyProgress.seedFor("2026-10-30"))
+
+        val day = DailyProgress()
+        day.record("2026-10-27", "2026-10-26", 700)
+        check("yesterday is empty on the first day", day.scoreOnPreviousDay("2026-10-26") == 0)
+        day.record("2026-10-28", "2026-10-27", 900)
+        check("yesterday's score is kept", day.scoreOnPreviousDay("2026-10-27") == 700)
+        check("a stale day is not shown as yesterday", day.scoreOnPreviousDay("2026-10-29") == 0)
+        val dayRoundTrip = DailyProgress()
+        dayRoundTrip.load(day.serialize())
+        check("the previous day survives a round trip", dayRoundTrip.scoreOnPreviousDay("2026-10-27") == 700)
+
+        check("the countdown shows hours and minutes", DailyProgress.formatCountdown(7 * 3_600_000L + 12 * 60_000L) == "7H 12M")
+        check("the countdown drops hours under an hour", DailyProgress.formatCountdown(42 * 60_000L) == "42M")
+        check("the countdown never reads zero", DailyProgress.formatCountdown(5_000L) == "1M")
+        check(
+            "the next board is under a day away",
+            DailyProgress.millisUntilNextBoard(1_760_000_000_000L) in 1..86_400_000L
+        )
+    }
+
+    // --- run history over time ---
+    run {
+        val h = RunHistory(capacity = 3)
+        check("empty history has no runs", h.runs.isEmpty())
+        h.add(100, 2, 1_000L)
+        h.add(200, 4, 2_000L)
+        check("newest run comes first", h.runs.map { it.score } == listOf(200, 100))
+        h.add(300, 6, 3_000L)
+        h.add(400, 8, 4_000L)
+        check("history keeps its capacity", h.runs.size == 3)
+        check("capacity drops the oldest run", h.runs.map { it.score } == listOf(400, 300, 200))
+        check("levels are kept with the score", h.runs.first().level == 8)
+
+        val restored = RunHistory(capacity = 3)
+        restored.load(h.serialize())
+        check("history survives a round trip", restored.runs == h.runs)
+        restored.load("10,2,100;oops;30,3")
+        check("malformed runs are skipped", restored.runs.map { it.score } == listOf(10, 30))
+        restored.load(null)
+        check("missing history loads empty", restored.runs.isEmpty())
+    }
+
+    // --- a seeded daily board replays identically ---
+    run {
+        val a = GameEngine(Random(71))
+        val b = GameEngine(Random(72))
+        a.restart(4242L)
+        b.restart(4242L)
+        check("the same seed deals the same queue", a.queue == b.queue)
+        check("the same seed rolls the same goals", a.objectives.map { it.kind } == b.objectives.map { it.kind })
+        check("the same seed deals the same weights", a.queue.map { it.weight } == b.queue.map { it.weight })
+
+        val other = GameEngine(Random(73))
+        other.restart(4243L)
+        check(
+            "a different seed changes the board",
+            other.queue != a.queue || other.objectives.map { it.kind } != a.objectives.map { it.kind }
+        )
+
+        for (e in listOf(a, b)) {
+            var guard = 0
+            while (!e.gameOver && guard++ < 400) {
+                e.drop(guard % Config.COLS)
+                repeat(20) { e.update(1f / 60f) }
+            }
+        }
+        check(
+            "the same seed plays out the same run",
+            a.score == b.score && a.level == b.level && a.gameOver == b.gameOver
+        )
+        println("  (seeded daily: gameOver=${a.gameOver} score=${a.score} level=${a.level})")
     }
 
     // --- an overloaded column spills instead of ending the run ---
