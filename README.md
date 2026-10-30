@@ -22,7 +22,7 @@ Pivots sit between each scale's two pans, so every marble adds weight. Each turn
 - **Special marbles** — roughly one marble in seven arrives as a powerup:
   - 🧨 **Bomb** — detonates where it lands, clearing a 3×3 square for weight-scaled points.
   - 🌈 **Wild** — colorless; stands in for any color in horizontal runs and in the flood-fill.
-  - ⚙️ **Heavy** — iron, always weight 9, and always fires the far pan of its scale for a double launch bonus when dropped.
+  - ⚙️ **Heavy** — iron, always weight 9, and always fires the far pan of its scale for a double launch bonus when dropped. The second marble of every run is one, so a first run reaches the signature toss early.
 - **Blob matching** — a horizontal run of 3+ same-color marbles seeds a match that flood-fills in all 8 directions (including diagonals), clearing organic-shaped groups.
 - **Streaks** — clears that follow each other within six seconds build a streak: every consecutive clear adds 25% to the points, up to +100%, and a drop that clears nothing ends it. The running streak and its remaining window show in the HUD.
 - **Run objectives** — every run rolls three goals from a pool (clear 30 marbles, clear 7 in one blob, toss 6 marbles, reach level 6, build a x3 streak, land 2 cascades, fire 3 powerups). They sit in a strip above the board and fill as you play; each one pays 150 points the moment it is met, so two runs rarely ask the same thing of you. Tap a goal in the strip to read it in full.
@@ -32,9 +32,9 @@ Pivots sit between each scale's two pans, so every marble adds weight. Each turn
 - **Placement timer** — you start with five seconds to choose a column, and each level shortens the clock by 0.35s down to a 1.8s floor; hesitate and the marble drops itself in a random one.
 - **Sound & music** — a procedural chiptune loop plus effect sounds for drops, matches, blasts, tosses, landings, level-ups, and game over. Everything is synthesized at runtime, so the APK ships no audio files. Music, effects and vibration can each be switched off in **SETTINGS**.
 - **Local high scores** — the in-game **SCORES** button opens a top-ten list of your best runs, kept on the device. Nothing is uploaded and the game needs no network or account.
-- **Stats & achievements** — the **STATS** panel shows lifetime totals (best level, best score, biggest clear, marbles cleared and tossed, spills survived, runs played) and six achievements unlocked by play: First Swing, Blast Off, Blob Buster, High Climber, Century and Point Hoarder. Its **HOW TO PLAY** link reopens the walkthrough. All of it stays on the device.
+- **Stats & achievements** — the **STATS** panel shows lifetime totals (best level, best score, biggest clear, marbles cleared and tossed, spills survived, runs played) and seven achievement families unlocked by play, most with three tiers: First Swing, Blast Off, Blob Buster, High Climber, Century, Point Hoarder and Streak Keeper. The panel shows how many tiers of each family are unlocked. Its **HOW TO PLAY** link reopens the walkthrough. All of it stays on the device.
 
-Game over when a marble has to rest in the top row and its column has no spill left to give — the pan's other column is full, or the column already spent its reserve without clearing. Your ten best runs are persisted across sessions.
+Game over when a marble has to rest in the top row and its column has no spill left to give — the pan's other column is full, or the column already spent its reserve without clearing. The game-over screen reports how far the run fell short of the score it was chasing and what the next run has in reach (the nearest unfinished goal and the marbles to the next level). Your ten best runs are persisted across sessions.
 
 ## Tech Stack
 

@@ -216,6 +216,21 @@ fun main() {
         println("  (random game: gameOver=${e.gameOver} score=${e.score} level=${e.level} drops=$steps)")
     }
 
+    // --- the opening queue always carries iron ---
+    run {
+        val e = GameEngine(Random(9))
+        check("the opening queue holds three marbles", e.queue.size == Config.QUEUE_SIZE)
+        check(
+            "the second opening marble is iron",
+            e.queue[1].power == PowerKind.HEAVY && e.queue[1].weight == Config.HEAVY_WEIGHT
+        )
+        e.restart()
+        check(
+            "every restart deals the iron marble again",
+            e.queue[1].power == PowerKind.HEAVY && e.queue[1].weight == Config.HEAVY_WEIGHT
+        )
+    }
+
     // --- queue and level progression ---
     run {
         val e = GameEngine(Random(5))
@@ -494,6 +509,28 @@ fun main() {
         println("  (seeded daily: gameOver=${a.gameOver} score=${a.score} level=${a.level})")
     }
 
+    // --- a replay deals the same board even after climbing levels ---
+    run {
+        val fresh = GameEngine(Random(75))
+        fresh.restart(4242L)
+
+        val played = GameEngine(Random(76))
+        played.restart(4242L)
+        fun clearTriple() {
+            for (c in 0..2) placeDirect(played, 11, c, 2, 1)
+            played.update(1f / 60f)
+        }
+        repeat(8) { clearTriple() } // 24 marbles cleared: level three
+        check("the replay test reaches a later level", played.level >= 3)
+
+        played.restart(4242L)
+        check("a replay deals the same queue regardless of the last run", played.queue == fresh.queue)
+        check(
+            "a replay rolls the same goals regardless of the last run",
+            played.objectives.map { it.kind } == fresh.objectives.map { it.kind }
+        )
+    }
+
     // --- an overloaded column spills instead of ending the run ---
     run {
         val e = GameEngine(Random(41))
@@ -610,13 +647,59 @@ fun main() {
         p.recordSpill()
         check("spills accumulate in the lifetime stats", p.totalSpills == 2)
         p.recordClear(100)
-        check("clearing a hundred marbles unlocks Century", p.check() == listOf(Achievement.CENTURY))
+        check(
+            "a huge clear climbs the Blob Buster tiers and unlocks Century",
+            p.check() == listOf(
+                Achievement.BLOB_BUSTER_2, Achievement.BLOB_BUSTER_3, Achievement.CENTURY
+            )
+        )
 
         val restored = PlayerProgress()
         restored.load(p.serialize())
         check("progress survives a round trip", restored.serialize() == p.serialize())
         check("the spill count survives a round trip", restored.totalSpills == 2)
         check("unlocked achievements survive a round trip", restored.unlockedAchievements == p.unlockedAchievements)
+    }
+
+    // --- achievements come in tiers ---
+    run {
+        check(
+            "every achievement family is numbered from tier one",
+            Achievement.groups.all { family -> family.map { it.tier } == (1..family.size).toList() }
+        )
+        check(
+            "the families and tiers add up",
+            Achievement.groups.size == 7 && Achievement.values().size == 19
+        )
+
+        val p = PlayerProgress()
+        repeat(50) { p.recordToss() }
+        check(
+            "toss tiers unlock in order",
+            p.check() == listOf(Achievement.BLAST_OFF, Achievement.BLAST_OFF_2)
+        )
+        repeat(200) { p.recordToss() }
+        check("the top toss tier needs 250", p.check() == listOf(Achievement.BLAST_OFF_3))
+
+        val q = PlayerProgress()
+        q.recordDailyStreak(3)
+        check("a three-day streak unlocks Streak Keeper", q.check() == listOf(Achievement.STREAK_KEEPER))
+        q.recordDailyStreak(7)
+        check(
+            "a seven-day streak unlocks the second tier",
+            q.check() == listOf(Achievement.STREAK_KEEPER_2)
+        )
+        q.recordDailyStreak(2)
+        check("a shorter streak does not lower the best", q.bestDailyStreak == 7)
+        check("a tier title spells its stage", Achievement.CENTURY_3.title == "Century III")
+
+        val restored = PlayerProgress()
+        restored.load(q.serialize())
+        check("the daily streak survives a round trip", restored.bestDailyStreak == 7)
+        check(
+            "tiered achievements survive a round trip",
+            restored.unlockedAchievements == q.unlockedAchievements
+        )
     }
 
     run {

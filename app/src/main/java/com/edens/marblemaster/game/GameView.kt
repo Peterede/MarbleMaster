@@ -51,6 +51,9 @@ class GameView(context: Context) : View(context) {
     }
     private val best: Int get() = highScores.best()
 
+    /** The score to beat when the current run started, so game over can report how close it came. */
+    private var bestAtRunStart = highScores.best()
+
     private val progress = PlayerProgress().apply { load(prefs.getString(KEY_PROGRESS, null)) }
     private val daily = DailyProgress().apply { load(prefs.getString(KEY_DAILY, null)) }
     private val history = RunHistory().apply { load(prefs.getString(KEY_HISTORY, null)) }
@@ -448,6 +451,7 @@ class GameView(context: Context) : View(context) {
         gameOverFlash = 0f
         scoreRecorded = false
         lastRank = 0
+        bestAtRunStart = if (dailyRun) daily.todayBest else best
     }
 
     private fun todayKey(): String = dailyKeyFormat.format(Date())
@@ -469,6 +473,10 @@ class GameView(context: Context) : View(context) {
         if (!dailyRun) return
         daily.record(todayKey(), yesterdayKey(), engine.score)
         prefs.edit().putString(KEY_DAILY, daily.serialize()).apply()
+        // the day streak is a lifetime stat too, so its achievements can unlock on a daily run
+        progress.recordDailyStreak(daily.bestStreak)
+        unlock(progress.check())
+        saveProgress()
     }
 
     /** Files the finished run in the local table exactly once per game. */
@@ -912,16 +920,28 @@ class GameView(context: Context) : View(context) {
             panel.centerX(), achTop, panelTextPaint
         )
 
+        // one row per family, showing how many of its tiers are unlocked
         val achRowH = 22f * density
-        for ((i, achievement) in Achievement.values().withIndex()) {
+        for ((i, group) in Achievement.groups.withIndex()) {
             val y = achTop + 20f * density + i * achRowH
-            val got = progress.isUnlocked(achievement)
+            val got = group.count { progress.isUnlocked(it) }
             rankPaint.textSize = 12f * density
-            rankPaint.color = if (got) 0xFFFFD54F.toInt() else 0xFF5C6B7A.toInt()
-            canvas.drawText(achievement.title, leftX, y, rankPaint)
+            rankPaint.color = when {
+                got == group.size -> 0xFFFFD54F.toInt()
+                got > 0 -> 0xFFB0BEC5.toInt()
+                else -> 0xFF5C6B7A.toInt()
+            }
+            canvas.drawText(group.first().group, leftX, y, rankPaint)
             datePaint.textSize = 9f * density
-            datePaint.color = if (got) 0xFFFFD54F.toInt() else 0xFF44515E.toInt()
-            canvas.drawText(if (got) "UNLOCKED" else "LOCKED", rightX + colW, y, datePaint)
+            datePaint.color = when {
+                got == group.size -> 0xFFFFD54F.toInt()
+                got > 0 -> 0xFF90A4AE.toInt()
+                else -> 0xFF44515E.toInt()
+            }
+            canvas.drawText(
+                if (got > 0) "$got/${group.size}" else "LOCKED",
+                rightX + colW, y, datePaint
+            )
         }
 
         panelTextPaint.textSize = 10f * density
@@ -934,7 +954,7 @@ class GameView(context: Context) : View(context) {
 
     private fun statsPanel(): RectF {
         val panelW = min(width * 0.9f, 340f * density)
-        val panelH = 386f * density
+        val panelH = 410f * density
         return RectF(
             width / 2f - panelW / 2f, (height - panelH) / 2f,
             width / 2f + panelW / 2f, (height + panelH) / 2f
@@ -1506,8 +1526,19 @@ class GameView(context: Context) : View(context) {
         canvas.drawText("GAME OVER", width / 2f, height * 0.33f, centerTextPaint)
         centerTextPaint.textSize = 24f * density
         canvas.drawText("Score ${engine.score}", width / 2f, height * 0.40f, centerTextPaint)
+        // The near miss: how far the run fell short of the score it was chasing.
+        val shortOfBest = (bestAtRunStart - engine.score).coerceAtLeast(0)
+        val nearBest = bestAtRunStart > 0 && shortOfBest > 0 &&
+            engine.score * 100 >= bestAtRunStart * 60
         centerTextPaint.textSize = 16f * density
-        canvas.drawText("Best $best", width / 2f, height * 0.445f, centerTextPaint)
+        canvas.drawText(
+            when {
+                nearBest -> "Best $bestAtRunStart · $shortOfBest SHORT"
+                dailyRun -> "Best ${daily.todayBest}"
+                else -> "Best $best"
+            },
+            width / 2f, height * 0.445f, centerTextPaint
+        )
 
         drawGoalCard(canvas, height * 0.575f)
 
@@ -1522,15 +1553,38 @@ class GameView(context: Context) : View(context) {
             centerTextPaint.color = 0xFFFFD54F.toInt()
             val days = if (daily.streak == 1) "1 DAY" else "${daily.streak} DAYS"
             canvas.drawText(
-                "DAILY STREAK $days · BEST ${daily.todayBest}",
+                "DAILY STREAK $days",
                 width / 2f, height * 0.70f, centerTextPaint
             )
             centerTextPaint.color = Color.WHITE
         }
+
+        // What the next run is chasing: the nearest unfinished goal and the next level.
+        val chase = nextUp()
+        if (chase.isNotEmpty()) {
+            centerTextPaint.textSize = 13f * density
+            centerTextPaint.color = 0xFF90A4AE.toInt()
+            canvas.drawText(chase, width / 2f, height * 0.735f, centerTextPaint)
+            centerTextPaint.color = Color.WHITE
+        }
+
         centerTextPaint.textSize = 15f * density
         centerTextPaint.color = 0xFF90CAF9.toInt()
         canvas.drawText("Tap to play again", width / 2f, height * 0.77f, centerTextPaint)
         centerTextPaint.color = Color.WHITE
+    }
+
+    /** The nearest unfinished goal and the marbles left to the next level, side by side. */
+    private fun nextUp(): String {
+        val nearest = engine.objectives
+            .filter { !it.done }
+            .maxByOrNull { it.progress.toFloat() / it.target }
+        val toNextLevel =
+            (Config.MARBLES_PER_LEVEL * engine.level - engine.marblesCleared).coerceAtLeast(0)
+        return buildList {
+            nearest?.let { add("${it.target - it.progress} MORE TO ${it.kind.label}") }
+            if (toNextLevel > 0) add("$toNextLevel TO LVL ${engine.level + 1}")
+        }.joinToString(" · ")
     }
 
     /** End-of-run card: how each of the run's goals finished, and the bonus they paid. */

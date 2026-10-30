@@ -110,12 +110,12 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         for (r in 0 until Config.ROWS) for (c in 0 until Config.COLS) grid[r][c] = null
         seesaws.forEach { it.slope = 0f; it.targetSlope = 0f }
         slideCooldown.fill(0f)
-        queue.clear()
-        repeat(Config.QUEUE_SIZE) { queue.add(randomQueued()) }
-        active = null
+        // reset the level before dealing so the opening marbles do not depend on the last run
         score = 0
         level = 1
         marblesCleared = 0
+        dealOpeningQueue()
+        active = null
         gameOver = false
         lastChain = 0
         streak = 0
@@ -781,6 +781,20 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
 
     fun addScore(points: Int) {
         score += points
+    }
+
+    /**
+     * The opening three marbles. The second one is always iron, so a new run reaches the
+     * signature scale toss within its first few drops instead of waiting on a lucky roll.
+     */
+    private fun dealOpeningQueue() {
+        queue.clear()
+        repeat(Config.QUEUE_SIZE) { queue.add(randomQueued()) }
+        queue[1] = QueuedMarble(
+            color = rng.nextInt(colorCount()),
+            weight = Config.HEAVY_WEIGHT,
+            power = PowerKind.HEAVY
+        )
     }
 
     private fun randomQueued(): QueuedMarble {
