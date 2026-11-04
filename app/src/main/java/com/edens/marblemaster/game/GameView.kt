@@ -617,6 +617,15 @@ class GameView(context: Context) : View(context) {
                 addPopup(width / 2f, height * 0.35f, "LEVEL ${ev.level}", 0xFF4FC3F7.toInt(), 1.4f)
                 audio.play(SoundEffect.LEVEL_UP)
             }
+            is GameEvent.OpeningCleared -> {
+                addPopup(width / 2f, height * 0.33f, "OPENING CLEARED", 0xFF66BB6A.toInt(), 1.7f)
+                addPopup(
+                    width / 2f, height * 0.33f + 24f * density,
+                    "+${ev.bonus} PTS", 0xFFFFD54F.toInt(), 1.7f
+                )
+                audio.play(SoundEffect.LEVEL_UP)
+                haptic()
+            }
             is GameEvent.GameOver -> {
                 audio.play(SoundEffect.GAME_OVER)
                 progress.recordRun(engine.score, engine.level)
@@ -1077,13 +1086,13 @@ class GameView(context: Context) : View(context) {
         TutorialPage(
             "DROP & MATCH",
             listOf(
-                "Tap a column to drop the next marble.",
-                "Three or more of a colour in a row clear in",
-                "a flood-fill blob.",
+                "The scales start loaded — clear the leftover",
+                "marbles for a ${Config.OPENING_BONUS}-point opening bonus.",
                 "",
-                "The bar above the board is the placement",
-                "clock — let it empty and the marble drops",
-                "itself into a random column."
+                "Tap a column to drop a marble. Three or more",
+                "of a colour in a row clear in a flood-fill",
+                "blob. The bar above the board is the clock;",
+                "let it empty and the marble drops itself."
             )
         ),
         TutorialPage(

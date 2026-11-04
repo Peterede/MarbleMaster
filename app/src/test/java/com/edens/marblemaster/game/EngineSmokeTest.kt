@@ -16,7 +16,7 @@ fun main() {
 
     // --- horizontal match triggers, vertical does not ---
     run {
-        val e = GameEngine(Random(1))
+        val e = engine(1)
         // build: vertical run of colour 0 in col 0 (rows 9..11) — must NOT trigger
         placeDirect(e, 11, 0, 0, 5)
         placeDirect(e, 10, 0, 0, 5)
@@ -34,7 +34,7 @@ fun main() {
 
     // --- flood fill removes touching same colour ---
     run {
-        val e = GameEngine(Random(2))
+        val e = engine(2)
         // L-shape of colour 2: (11,0)(11,1)(11,2) horizontal + (10,2)(9,2) vertical arm touching
         placeDirect(e, 11, 0, 2, 1)
         placeDirect(e, 11, 1, 2, 1)
@@ -52,7 +52,7 @@ fun main() {
 
     // --- wild marble stands in for any colour ---
     run {
-        val e = GameEngine(Random(12))
+        val e = engine(12)
         placeDirect(e, 11, 0, 2, 1)
         placePower(e, 11, 1, -1, 1, PowerKind.WILD)
         placeDirect(e, 11, 2, 2, 1)
@@ -66,7 +66,7 @@ fun main() {
 
     // --- wild-only run never self-matches ---
     run {
-        val e = GameEngine(Random(13))
+        val e = engine(13)
         placePower(e, 11, 3, -1, 2, PowerKind.WILD)
         placePower(e, 11, 5, -1, 2, PowerKind.WILD)
         placePower(e, 11, 7, -1, 2, PowerKind.WILD)
@@ -76,7 +76,7 @@ fun main() {
 
     // --- wilds hugging the right edge must not overflow the run scan ---
     run {
-        val e = GameEngine(Random(18))
+        val e = engine(18)
         placePower(e, 11, 8, -1, 2, PowerKind.WILD)
         placePower(e, 10, 8, -1, 2, PowerKind.WILD)
         placePower(e, 11, 7, 1, 2)
@@ -86,7 +86,7 @@ fun main() {
 
     // --- bomb clears a square around its landing cell ---
     run {
-        val e = GameEngine(Random(14))
+        val e = engine(14)
         placeDirect(e, 11, 3, 2, 1)
         placeDirect(e, 10, 3, 5, 1)
         placeDirect(e, 11, 4, 0, 1)
@@ -106,7 +106,7 @@ fun main() {
 
     // --- launch: heavy vs light catapults the light marble ---
     run {
-        val e = GameEngine(Random(3))
+        val e = engine(3)
         // first seesaw is cols 0-1, pivot 0.5. Put light marble weight 1 at col 0.
         placeDirect(e, 11, 0, 4, 1)
         // drop heavy weight 9 into col 1 via engine API so triggerLaunch runs
@@ -124,7 +124,7 @@ fun main() {
 
     // --- a scale tips its lighter pan: every marble on it is tossed and comes back special ---
     run {
-        val e = GameEngine(Random(21))
+        val e = engine(21)
         // left pan of scale A (col 0) holds three marbles, right pan (col 1) is much heavier
         placeDirect(e, 11, 0, 4, 1)
         placeDirect(e, 10, 0, 2, 2)
@@ -151,7 +151,7 @@ fun main() {
 
     // --- heavy marble always launches and doubles the bonus ---
     run {
-        val e = GameEngine(Random(15))
+        val e = engine(15)
         placeDirect(e, 11, 0, 5, 1)
         placeDirect(e, 10, 0, 4, 1)
         e.drop(1, 3, Config.HEAVY_WEIGHT, PowerKind.HEAVY)
@@ -171,7 +171,7 @@ fun main() {
 
     // --- seesaw tilts with weight ---
     run {
-        val e = GameEngine(Random(4))
+        val e = engine(4)
         placeDirect(e, 11, 0, 5, 4)
         placeDirect(e, 11, 3, 5, 4)
         repeat(20) { e.update(0.1f) }
@@ -181,7 +181,7 @@ fun main() {
 
     // --- four beams, pillar column never tilts ---
     run {
-        val e = GameEngine(Random(16))
+        val e = engine(16)
         check("board has four seesaws", e.seesaws.size == 4)
         check("beams never contain the pillar", e.seesaws.none { it.contains(Config.PILLAR_COL) })
         placeDirect(e, 11, Config.PILLAR_COL, 1, 9)
@@ -191,7 +191,7 @@ fun main() {
 
     // --- powerups are dealt from the queue ---
     run {
-        val e = GameEngine(Random(17))
+        val e = engine(17)
         var specials = 0
         repeat(50) {
             e.restart()
@@ -203,7 +203,7 @@ fun main() {
 
     // --- full random game reaches a consistent state ---
     run {
-        val e = GameEngine(Random(42))
+        val e = engine(42)
         var steps = 0
         while (!e.gameOver && steps < 20000) {
             e.drop(Random(steps.toLong()).nextInt(Config.COLS))
@@ -218,7 +218,7 @@ fun main() {
 
     // --- the opening queue always carries iron ---
     run {
-        val e = GameEngine(Random(9))
+        val e = engine(9)
         check("the opening queue holds three marbles", e.queue.size == Config.QUEUE_SIZE)
         check(
             "the second opening marble is iron",
@@ -231,9 +231,40 @@ fun main() {
         )
     }
 
+    // --- a run opens with marbles already resting on the scales ---
+    run {
+        val e = GameEngine(Random(81))
+        val openingCount = Config.OPENING_STACKS.sumOf { it.size }
+        check("the board starts loaded", countMarbles(e) == openingCount)
+        repeat(60) { e.update(1f / 60f) }
+        check(
+            "the opening marbles do not clear themselves",
+            countMarbles(e) == openingCount && e.score == 0
+        )
+        check(
+            "every loaded scale is visibly tilted",
+            e.seesaws.all { kotlin.math.abs(it.slope) > 0.2f }
+        )
+        check("the opening pans do not slide or toss", e.airborne.isEmpty() && e.spills == 0)
+        check("a bare test board starts empty", countMarbles(engine(82)) == 0)
+
+        // clearing every leftover pays the opening bonus once
+        val bonusRun = GameEngine(Random(83))
+        for (r in 0 until Config.ROWS) for (c in 0 until Config.COLS) bonusRun.grid[r][c] = null
+        bonusRun.update(1f / 60f)
+        val openingEvent = bonusRun.drainEvents().filterIsInstance<GameEvent.OpeningCleared>()
+        check("clearing the leftovers pays the opening bonus", bonusRun.score == Config.OPENING_BONUS)
+        check(
+            "the opening bonus is announced",
+            openingEvent.size == 1 && openingEvent[0].bonus == Config.OPENING_BONUS
+        )
+        bonusRun.update(1f / 60f)
+        check("the opening bonus only pays once", bonusRun.drainEvents().none { it is GameEvent.OpeningCleared })
+    }
+
     // --- queue and level progression ---
     run {
-        val e = GameEngine(Random(5))
+        val e = engine(5)
         check("queue starts full", e.queue.size == Config.QUEUE_SIZE)
         e.drop(3)
         check("drop consumes queue", e.queue.size == Config.QUEUE_SIZE && e.active != null)
@@ -245,7 +276,7 @@ fun main() {
 
     // --- placement timer ---
     run {
-        val e = GameEngine(Random(7))
+        val e = engine(7)
         check("timer starts full", e.timeLeft == Config.DROP_TIMER_SECONDS)
         repeat(40) { e.update(0.05f) }
         check("timer drains while the player thinks", e.timeLeft < Config.DROP_TIMER_SECONDS)
@@ -266,7 +297,7 @@ fun main() {
 
     // --- consecutive clears build a streak bonus ---
     run {
-        val e = GameEngine(Random(31))
+        val e = engine(31)
         placeDirect(e, 11, 0, 0, 1)
         placeDirect(e, 11, 1, 0, 1)
         placeDirect(e, 11, 2, 0, 1)
@@ -291,7 +322,7 @@ fun main() {
 
     // --- per-run objectives ---
     run {
-        val e = GameEngine(Random(51))
+        val e = engine(51)
         check("three goals are rolled", e.objectives.size == Config.OBJECTIVE_COUNT)
         check(
             "goals are distinct",
@@ -356,7 +387,7 @@ fun main() {
 
     // --- objectives reset with the run ---
     run {
-        val e = GameEngine(Random(52))
+        val e = engine(52)
         repeat(40) { e.update(0.1f) }
         e.restart()
         check("a restart clears goal progress", e.objectives.none { it.done } && e.objectivesDone() == 0)
@@ -365,7 +396,7 @@ fun main() {
 
     // --- the late levels close columns ---
     run {
-        val e = GameEngine(Random(61))
+        val e = engine(61)
 
         // three neighbouring open columns, so a clear is always possible
         fun openTriple(): List<Int> {
@@ -480,15 +511,15 @@ fun main() {
 
     // --- a seeded daily board replays identically ---
     run {
-        val a = GameEngine(Random(71))
-        val b = GameEngine(Random(72))
+        val a = engine(71)
+        val b = engine(72)
         a.restart(4242L)
         b.restart(4242L)
         check("the same seed deals the same queue", a.queue == b.queue)
         check("the same seed rolls the same goals", a.objectives.map { it.kind } == b.objectives.map { it.kind })
         check("the same seed deals the same weights", a.queue.map { it.weight } == b.queue.map { it.weight })
 
-        val other = GameEngine(Random(73))
+        val other = engine(73)
         other.restart(4243L)
         check(
             "a different seed changes the board",
@@ -511,10 +542,10 @@ fun main() {
 
     // --- a replay deals the same board even after climbing levels ---
     run {
-        val fresh = GameEngine(Random(75))
+        val fresh = engine(75)
         fresh.restart(4242L)
 
-        val played = GameEngine(Random(76))
+        val played = engine(76)
         played.restart(4242L)
         fun clearTriple() {
             for (c in 0..2) placeDirect(played, 11, c, 2, 1)
@@ -533,7 +564,7 @@ fun main() {
 
     // --- an overloaded column spills instead of ending the run ---
     run {
-        val e = GameEngine(Random(41))
+        val e = engine(41)
         // the pillar never tilts, so it makes a clean test bed for the spill rule
         for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
         e.addScore(500)
@@ -561,7 +592,7 @@ fun main() {
 
     // --- a spill penalty can never push the score below zero ---
     run {
-        val e = GameEngine(Random(45))
+        val e = engine(45)
         for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
         e.addScore(5) // less than the level-1 spill penalty
         e.drop(Config.PILLAR_COL, 3, 1)
@@ -573,7 +604,7 @@ fun main() {
 
     // --- a topped-out column cannot spill twice without clearing ---
     run {
-        val e = GameEngine(Random(43))
+        val e = engine(43)
         for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
         e.drop(Config.PILLAR_COL, 3, 1)
         var guard = 0
@@ -592,7 +623,7 @@ fun main() {
 
     // --- clearing the stack back out of the danger zone refills the reserve ---
     run {
-        val e = GameEngine(Random(44))
+        val e = engine(44)
         for (r in 1 until Config.ROWS) placeDirect(e, r, Config.PILLAR_COL, 0, 1)
         e.drop(Config.PILLAR_COL, 3, 1)
         var guard = 0
@@ -613,7 +644,7 @@ fun main() {
 
     // --- a pan with no room left ends the run ---
     run {
-        val e = GameEngine(Random(42))
+        val e = engine(42)
         // three different colours keep the full columns from matching horizontally
         for (r in 0 until Config.ROWS) {
             placeDirect(e, r, 3, 0, 1)
@@ -713,7 +744,7 @@ fun main() {
     }
 
     run {
-        val e = GameEngine(Random(8))
+        val e = engine(8)
         // never touch the board: the game must drop marbles for the player
         repeat(200) { e.update(0.05f) }
         check("an idle board is auto-dropped", e.active != null || countMarbles(e) > 0)
@@ -793,6 +824,9 @@ fun main() {
     if (failures == 0) println("ALL TESTS PASSED") else println("$failures TEST(S) FAILED")
     if (failures > 0) kotlin.system.exitProcess(1)
 }
+
+/** A fresh engine with a bare board, so placement tests start from a known state. */
+private fun engine(seed: Long): GameEngine = GameEngine(Random(seed), openingBoard = false)
 
 private fun countMarbles(e: GameEngine): Int {
     var n = 0

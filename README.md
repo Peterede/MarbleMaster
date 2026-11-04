@@ -16,6 +16,7 @@ Pivots sit between each scale's two pans, so every marble adds weight. Each turn
 
 **Mechanics:**
 
+- **Loaded opening board** — a run never starts empty: marbles already rest on the scales, each beam visibly tipped toward its heavier pan. Clear every last one of them — by matching, bombing or tossing them off — for a 250-point opening bonus.
 - **Scale physics** — imbalance tips the beam; spring physics return it to level when unloaded. Steep tilts make marbles slide toward the low pan, cascading the stack.
 - **Overflow spills** — a column that reaches the top does not end the run by itself: the marble that would rest in the top row rolls into the other pan column while that column has room below the top. But a spill is a rescue, not a free move: it costs 20 points (plus 10 per level, never dropping the score below zero) and uses up that column's single spill reserve. The reserve only comes back once you clear the stack down out of the danger zone, so overstacking the same column twice without clearing it ends the run. Columns within two rows of the top pulse amber while their reserve is still there and red once it is spent.
 - **Scale tosses** — if one pan becomes much heavier, the light pan flips and *every* marble resting on it is thrown into the air for bonus points (35% chance each to spawn a bonus star). Those marbles arc back down onto the board as special marbles, so a toss always pays off in powerups.

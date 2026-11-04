@@ -143,5 +143,8 @@ sealed class GameEvent {
 
     /** A per-run objective was met; [reward] points were already added to the score. */
     data class ObjectiveDone(val objective: Objective, val reward: Int) : GameEvent()
+
+    /** The board's opening marbles are all gone; [bonus] points were already added to the score. */
+    data class OpeningCleared(val bonus: Int) : GameEvent()
     object GameOver : GameEvent()
 }

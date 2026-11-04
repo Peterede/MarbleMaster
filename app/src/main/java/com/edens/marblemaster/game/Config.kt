@@ -18,6 +18,26 @@ object Config {
     val SEESAW_PIVOTS = listOf(0.5f, 2.5f, 5.5f, 7.5f)
     const val PILLAR_COL = 4
 
+    /**
+     * The board a run opens on: the marbles already resting on each column, bottom up, as their
+     * weights. Each scale starts clearly tipped toward its heavier pan — a five-point difference,
+     * well short of the launch threshold — while the engine deals colours so no three line up.
+     */
+    val OPENING_STACKS = arrayOf(
+        intArrayOf(4, 5), // scale A, left pan
+        intArrayOf(4),    // scale A, right pan
+        intArrayOf(3, 3), // scale B, left pan
+        intArrayOf(5, 6), // scale B, right pan
+        intArrayOf(3),    // centre pillar
+        intArrayOf(4, 5), // scale C, left pan
+        intArrayOf(4),    // scale C, right pan
+        intArrayOf(3, 3), // scale D, left pan
+        intArrayOf(5, 6)  // scale D, right pan
+    )
+
+    /** Points paid once every marble the board opened with has been cleared off it. */
+    const val OPENING_BONUS = 250
+
     /** Maximum tilt in cell-widths per column (~29 degrees). */
     const val MAX_SLOPE = 0.55f
     const val SLOPE_GAIN = 0.055f

@@ -10,6 +10,8 @@ import kotlin.math.sign
  *
  * Rules implemented:
  *  - Marbles are dropped into columns by the player; each has a colour and a weight.
+ *  - A run opens with marbles already resting on the scales, so the first drops have to clear
+ *    the leftovers instead of starting from an empty board. Clearing all of them pays a bonus.
  *  - 3+ same-coloured marbles connected HORIZONTALLY trigger a reaction. The match and every
  *    same-coloured marble touching it (8 directions) are removed. Vertical runs do NOT trigger.
  *  - Four scales under the field tip with the weight placed on each side. Extreme imbalance
@@ -22,7 +24,11 @@ import kotlin.math.sign
  *    spill reserve, which only refills once the stack clears back out of the danger zone.
  *    Game over when a topped-out column has no spill left to spend.
  */
-class GameEngine(val rng: java.util.Random = java.util.Random()) {
+class GameEngine(
+    val rng: java.util.Random = java.util.Random(),
+    /** Whether a fresh run deals the opening marbles onto the scales; off leaves a bare board. */
+    private val openingBoard: Boolean = true
+) {
 
     val grid = Array(Config.ROWS) { arrayOfNulls<Marble>(Config.COLS) }
     val seesaws = Config.SEESAW_COLUMNS.mapIndexed { i, cols ->
@@ -77,6 +83,9 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
     /** Columns the late levels have closed off. Nothing new can enter one. */
     private val closedCols = BooleanArray(Config.COLS)
 
+    /** Marbles the board opened with; emptied (and paid out) once none are left on the board. */
+    private val openingIds = HashSet<Int>()
+
     /** Goals rolled at the start of this run; each one pays points when it is met. */
     val objectives = ArrayList<Objective>(Config.OBJECTIVE_COUNT)
 
@@ -108,6 +117,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
 
     fun restart() {
         for (r in 0 until Config.ROWS) for (c in 0 until Config.COLS) grid[r][c] = null
+        openingIds.clear()
         seesaws.forEach { it.slope = 0f; it.targetSlope = 0f }
         slideCooldown.fill(0f)
         // reset the level before dealing so the opening marbles do not depend on the last run
@@ -115,6 +125,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         level = 1
         marblesCleared = 0
         dealOpeningQueue()
+        if (openingBoard) dealOpeningMarbles()
         active = null
         gameOver = false
         lastChain = 0
@@ -212,6 +223,7 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
         updateObjectives()
         rechargeSpills()
         checkGameOver()
+        checkOpeningCleared()
     }
 
     // ------------------------------------------------------------------ placement
@@ -781,6 +793,43 @@ class GameEngine(val rng: java.util.Random = java.util.Random()) {
 
     fun addScore(points: Int) {
         score += points
+    }
+
+    /**
+     * Loads the scales with the marbles a run opens on. Colours step around the palette so no
+     * three line up, and every stack sits well below its pan's launch threshold.
+     */
+    private fun dealOpeningMarbles() {
+        val colors = colorCount()
+        for (c in 0 until Config.COLS) {
+            val stack = Config.OPENING_STACKS[c]
+            for (i in stack.indices) {
+                val row = Config.ROWS - 1 - i
+                val m = Marble(
+                    nextId++, (c * 2 + i) % colors, stack[i],
+                    row, c, visualRow = row.toFloat(), visualCol = c.toFloat()
+                )
+                grid[row][c] = m
+                openingIds.add(m.id)
+            }
+        }
+    }
+
+    /**
+     * Pays the opening bonus once no marble the board started with is left on it. Match, blast
+     * or toss all count as clearing one; a spill only moves it, so it still counts as there.
+     */
+    private fun checkOpeningCleared() {
+        if (openingIds.isEmpty()) return
+        for (r in 0 until Config.ROWS) {
+            for (c in 0 until Config.COLS) {
+                val m = grid[r][c] ?: continue
+                if (m.id in openingIds) return
+            }
+        }
+        openingIds.clear() // the bonus pays once per run
+        score += Config.OPENING_BONUS
+        pendingEvents.add(GameEvent.OpeningCleared(Config.OPENING_BONUS))
     }
 
     /**
